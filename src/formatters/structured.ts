@@ -25,12 +25,14 @@ export function formatStructured(data: ActivityData): string {
   lines.push("");
 
   // PRs Reviewed
-  lines.push(`--- Pull Requests Reviewed (${data.prsReviewed.length}) ---`);
+  const totalReviewComments = data.prsReviewed.reduce((sum, pr) => sum + (pr.reviewCommentCount ?? 0), 0);
+  lines.push(`--- Pull Requests Reviewed (${data.prsReviewed.length}, ${totalReviewComments} review comment${totalReviewComments !== 1 ? "s" : ""}) ---`);
   if (data.prsReviewed.length === 0) {
     lines.push("  (none)");
   } else {
     for (const pr of data.prsReviewed) {
-      lines.push(`  ${pr.repo} #${pr.number} - ${pr.title}`);
+      const commentInfo = pr.reviewCommentCount ? ` (${pr.reviewCommentCount} comment${pr.reviewCommentCount !== 1 ? "s" : ""})` : "";
+      lines.push(`  ${pr.repo} #${pr.number} - ${pr.title}${commentInfo}`);
     }
   }
   lines.push("");
@@ -52,34 +54,17 @@ export function formatStructured(data: ActivityData): string {
   }
   lines.push("");
 
-  // PR Comments
-  lines.push(
-    `--- PR Comments (${data.prComments.length} PR${data.prComments.length !== 1 ? "s" : ""} commented on) ---`
-  );
-  if (data.prComments.length === 0) {
-    lines.push("  (none)");
-  } else {
-    for (const c of data.prComments) {
-      lines.push(`  ${c.repo} #${c.prNumber} - ${c.prTitle}`);
-    }
-  }
-  lines.push("");
-
   // Summary counts
   lines.push("--- Summary ---");
   lines.push(
     `  ${data.prsCreated.length} PR${data.prsCreated.length !== 1 ? "s" : ""} created (${merged.length} merged, ${open.length} open, ${closed.length} closed)`
   );
   lines.push(
-    `  ${data.prsReviewed.length} PR${data.prsReviewed.length !== 1 ? "s" : ""} reviewed`
+    `  ${data.prsReviewed.length} PR${data.prsReviewed.length !== 1 ? "s" : ""} reviewed (${totalReviewComments} review comment${totalReviewComments !== 1 ? "s" : ""})`
   );
   const repoCount = new Set(data.commits.map((c) => c.repo)).size;
   lines.push(
     `  ${data.commits.length} commit${data.commits.length !== 1 ? "s" : ""} across ${repoCount} repo${repoCount !== 1 ? "s" : ""}`
   );
-  lines.push(
-    `  ${data.prComments.length} PR${data.prComments.length !== 1 ? "s" : ""} commented on`
-  );
-
   return lines.join("\n");
 }

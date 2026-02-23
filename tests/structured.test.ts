@@ -9,7 +9,6 @@ const emptyData: ActivityData = {
   prsCreated: [],
   prsReviewed: [],
   commits: [],
-  prComments: [],
 };
 
 test("formatStructured shows header with period and user", () => {
@@ -100,13 +99,9 @@ test("formatStructured shows summary counts", () => {
     commits: [
       { message: "msg", sha: "a", url: "", repo: "org/repo", date: "" },
     ],
-    prComments: [
-      { prTitle: "PR3", prUrl: "", prNumber: 3, repo: "org/repo" },
-    ],
   };
   const output = formatStructured(data);
   expect(output).toContain("1 PR created (1 merged, 0 open, 0 closed)");
   expect(output).toContain("1 PR reviewed");
   expect(output).toContain("1 commit across 1 repo");
-  expect(output).toContain("1 PR commented on");
 });
