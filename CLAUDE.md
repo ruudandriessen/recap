@@ -4,7 +4,7 @@ globs: "*.ts, *.tsx, *.html, *.css, *.js, *.jsx, package.json"
 alwaysApply: false
 ---
 
-Default to using Bun instead of Node.js.
+Default to using Bun instead of Node.js for development (running, testing, installing).
 
 - Use `bun <file>` instead of `node <file>` or `ts-node <file>`
 - Use `bun test` instead of `jest` or `vitest`
@@ -12,6 +12,14 @@ Default to using Bun instead of Node.js.
 - Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
 - Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
 - Bun automatically loads .env, so don't use dotenv.
+
+## Runtime compatibility
+
+This is an npm package that users may run with Node.js or Bun. Application code must work in both runtimes:
+
+- Use `node:*` standard library modules (e.g. `node:child_process`, `node:fs`) instead of Bun-specific APIs (e.g. `Bun.spawn`, `Bun.file`)
+- Don't import from `bun:*` modules in application code
+- Bun-specific APIs are fine in tests, build scripts, and dev tooling
 
 ## APIs
 
