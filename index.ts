@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 import ora from "ora";
 import { parseArgs, shouldRunInteractive } from "./src/cli.ts";
 import { resolveDateRange } from "./src/config.ts";
