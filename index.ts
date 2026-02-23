@@ -33,7 +33,7 @@ async function main() {
       console.log("\n");
     }
     const summarySpinner = ora("Generating AI summary...").start();
-    const summary = await generateSummary(data);
+    const summary = await generateSummary(data, options.period);
     summarySpinner.succeed("AI Summary");
     console.log("");
     console.log(summary);
