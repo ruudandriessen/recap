@@ -8,21 +8,42 @@ Recap pulls your GitHub activity — PRs authored, PRs reviewed, commits, and PR
 
 It handles GitHub's 1000-result search limit by automatically splitting date ranges and paginates through all results. Organization filtering lets you scope reports to a specific org.
 
-## Setup
+## Install
 
 ```bash
-bun install
+npm i @clanki/recap -g
+bun i @clanki/recap -g
+# or your favorite package manager
 ```
 
-Requires a `GITHUB_TOKEN` environment variable with read access to your repos and PRs.
+### Prerequisites
+
+- **GitHub auth** (one of the following):
+  - The [GitHub CLI](https://cli.github.com/) (`gh`) installed and authenticated — recap will use it automatically
+  - A `GITHUB_TOKEN` environment variable with read access to your repos and PRs
+- The [`claude`](https://docs.anthropic.com/en/docs/claude-code) CLI installed locally (used to generate AI summaries)
 
 ## Usage
 
+Run `recap` with no arguments to start interactive mode, which walks you through the options:
+
 ```bash
-bun run index.ts [options]
+recap
 ```
 
-### Options
+### Quick roast
+
+Get a comedic roast of your recent GitHub activity:
+
+```bash
+recap roast
+```
+
+### Full options
+
+```bash
+recap [options]
+```
 
 | Flag | Description | Default |
 |------|-------------|---------|
@@ -33,22 +54,29 @@ bun run index.ts [options]
 | `--username <username>` | GitHub username (defaults to the token owner) | — |
 | `-o, --org <org>` | Filter by GitHub organization | — |
 | `-p, --prompt <prompt>` | Custom prompt (replaces default review prompt; activity data is appended) | — |
+| `-i, --interactive` | Force interactive mode | — |
 
 ### Examples
 
 ```bash
 # Last week's recap (default)
-bun run index.ts
+recap
 
 # Last quarter, text only
-bun run index.ts -t quarter -f text
+recap -t quarter -f text
 
 # Custom date range for a specific org
-bun run index.ts -t custom -s 2025-01-01 -u 2025-03-31 -o my-org
+recap -t custom -s 2025-01-01 -u 2025-03-31 -o my-org
 
 # AI summary only for the past month
-bun run index.ts -t month -f summary
+recap -t month -f summary
 
 # Custom prompt
-bun run index.ts -p "Summarize this developer's work in 3 bullet points."
+recap -p "Summarize this developer's work in 3 bullet points."
+
+# Roast your last month of work
+recap roast
+
+# Roast scoped to an org
+recap roast -o my-org
 ```
