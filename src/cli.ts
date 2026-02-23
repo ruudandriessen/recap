@@ -89,13 +89,14 @@ export function parseArgs(argv: string[]): CliOptions {
   };
 }
 
-const SUBCOMMANDS = ["roast"];
+const SUBCOMMANDS: string[] = ["roast"];
 
 export function shouldRunInteractive(argv: string[]): boolean {
   if (argv.includes("-i") || argv.includes("--interactive")) {
     return true;
   }
-  if (SUBCOMMANDS.includes(argv[0])) {
+  const first = argv[0];
+  if (first !== undefined && SUBCOMMANDS.includes(first)) {
     return false;
   }
   return argv.length === 0;
