@@ -1,7 +1,38 @@
 import { Command } from "commander";
 import type { CliOptions } from "./types.ts";
+import { PROMPT_PRESETS } from "./prompts.ts";
+
+function parseRoastArgs(argv: string[]): CliOptions {
+  const program = new Command();
+  program
+    .name("recap roast")
+    .description("Roast your GitHub activity from the last month")
+    .option("--username <username>", "GitHub username (default: from token)")
+    .option("-o, --org <org>", "filter by GitHub organization")
+    .option(
+      "-t, --period <period>",
+      "time period: week, month, quarter, year",
+      "month"
+    );
+
+  program.parse(argv, { from: "user" });
+  const opts = program.opts();
+  const roastPrompt = PROMPT_PRESETS.find((p) => p.value === "roast")!.prompt;
+
+  return {
+    period: opts.period ?? "month",
+    format: "summary",
+    username: opts.username,
+    org: opts.org,
+    prompt: roastPrompt,
+  };
+}
 
 export function parseArgs(argv: string[]): CliOptions {
+  if (argv[0] === "roast") {
+    return parseRoastArgs(argv.slice(1));
+  }
+
   const program = new Command();
 
   program
@@ -25,6 +56,7 @@ export function parseArgs(argv: string[]): CliOptions {
     .option("-p, --prompt <prompt>", "custom prompt (replaces default review prompt; activity data is appended)");
 
   program.parse(argv, { from: "user" });
+
   const opts = program.opts();
 
   const period = opts.period as CliOptions["period"];
@@ -57,9 +89,14 @@ export function parseArgs(argv: string[]): CliOptions {
   };
 }
 
+const SUBCOMMANDS = ["roast"];
+
 export function shouldRunInteractive(argv: string[]): boolean {
   if (argv.includes("-i") || argv.includes("--interactive")) {
     return true;
+  }
+  if (SUBCOMMANDS.includes(argv[0])) {
+    return false;
   }
   return argv.length === 0;
 }
