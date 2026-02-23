@@ -1,14 +1,28 @@
 import type { ActivityData } from "../types.ts";
 import { formatStructured } from "./structured.ts";
 
-export async function generateSummary(data: ActivityData): Promise<string> {
+export async function generateSummary(
+  data: ActivityData,
+  period: string
+): Promise<string> {
   const structuredText = formatStructured(data);
 
-  const prompt = `Here is my GitHub activity for the period ${data.dateRange.since} to ${data.dateRange.until}. Please write a professional performance review summary (3-5 paragraphs) of what I accomplished. Highlight key contributions, themes, impact, and areas of ownership. Group related work together into narratives. Call out cross-team collaboration, technical leadership, and significant deliverables. Keep it suitable for a performance review or promotion packet.
+  const prompt = `You are an engineering manager reviewing a developer's GitHub activity. Below is ${data.username}'s GitHub activity for ${period === "custom" ? "a custom period" : `the past ${period}`} (${data.dateRange.since} to ${data.dateRange.until}).
+
+Provide an unbiased, honest engineering review of this person's work. This should NOT be a simple recap — it should be a fair evaluation. Consider that this represents ${period === "custom" ? "a custom time period" : `one ${period}`} of output.
+
+Your review should cover:
+1. **What they worked on** — briefly summarize the themes and areas of contribution.
+2. **Quality signals** — based on PR titles, commit messages, review activity, and volume, assess the quality and thoughtfulness of their work. Note any red flags (e.g. sloppy commit messages, no reviews, only trivial changes) or green flags (e.g. meaningful reviews, well-scoped PRs, cross-cutting work).
+3. **Scope & impact** — evaluate the scope of the work relative to the time period. Is this a reasonable amount of output? Above or below expectations?
+4. **Collaboration** — assess their review activity and engagement with others' work.
+5. **Pros** — list specific strengths demonstrated in this period.
+6. **Areas for improvement** — list concrete areas where they could do better.
+7. **Estimated engineer level** — based solely on the evidence in this activity, estimate what level of engineer this person appears to be (e.g. junior, mid-level, senior, staff). Explain your reasoning.
+
+Be direct and honest. Don't sugarcoat, but be fair. If there's not enough data to assess something, say so.
 
 ${structuredText}
-
-Additionally, here are the specific PR titles and commit messages for more context:
 
 PRs Created:
 ${data.prsCreated.map((pr) => `- ${pr.title} (#${pr.number}) [${pr.merged ? "merged" : pr.state}]`).join("\n") || "(none)"}
