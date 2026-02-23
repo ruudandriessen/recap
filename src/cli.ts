@@ -17,7 +17,7 @@ export function parseArgs(argv: string[]): CliOptions {
     .option(
       "-f, --format <format>",
       "output format: text, summary, or both",
-      "text"
+      "both"
     )
     .option("--username <username>", "GitHub username (default: from token)")
     .option("-o, --org <org>", "filter by GitHub organization");
