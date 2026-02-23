@@ -41,31 +41,34 @@ export class GitHubSource implements DataSource {
 
   private async searchPRsCreated(
     username: string,
-    { since, until }: DateRange,
+    dateRange: DateRange,
     orgFilter: string
   ): Promise<PullRequest[]> {
+    const { since, until } = dateRange;
     const q = `is:pr author:${username} created:${since}..${until}${orgFilter}`;
-    const items = await this.searchAll("/search/issues", q);
+    const items = await this.searchAll("/search/issues", q, dateRange);
     return items.map(mapPR);
   }
 
   private async searchPRsReviewed(
     username: string,
-    { since, until }: DateRange,
+    dateRange: DateRange,
     orgFilter: string
   ): Promise<PullRequest[]> {
+    const { since, until } = dateRange;
     const q = `is:pr reviewed-by:${username} -author:${username} created:${since}..${until}${orgFilter}`;
-    const items = await this.searchAll("/search/issues", q);
+    const items = await this.searchAll("/search/issues", q, dateRange);
     return items.map(mapPR);
   }
 
   private async searchPRComments(
     username: string,
-    { since, until }: DateRange,
+    dateRange: DateRange,
     orgFilter: string
   ): Promise<PRComment[]> {
+    const { since, until } = dateRange;
     const q = `is:pr commenter:${username} -author:${username} created:${since}..${until}${orgFilter}`;
-    const items = await this.searchAll("/search/issues", q);
+    const items = await this.searchAll("/search/issues", q, dateRange);
     return items.map((item) => ({
       prTitle: item.title,
       prUrl: item.html_url,
@@ -76,11 +79,12 @@ export class GitHubSource implements DataSource {
 
   private async searchCommits(
     username: string,
-    { since, until }: DateRange,
+    dateRange: DateRange,
     orgFilter: string
   ): Promise<Commit[]> {
+    const { since, until } = dateRange;
     const q = `author:${username} author-date:${since}..${until}${orgFilter}`;
-    const items = await this.searchAll("/search/commits", q);
+    const items = await this.searchAll("/search/commits", q, dateRange);
     return items.map((item) => ({
       message: item.commit.message.split("\n")[0], // first line only
       sha: item.sha,
@@ -90,9 +94,7 @@ export class GitHubSource implements DataSource {
     }));
   }
 
-  private async searchAll(endpoint: string, q: string): Promise<any[]> {
-    const items: any[] = [];
-    let page = 1;
+  private async searchAll(endpoint: string, q: string, dateRange: DateRange): Promise<any[]> {
     const perPage = 100;
 
     const accept =
@@ -100,39 +102,70 @@ export class GitHubSource implements DataSource {
         ? "application/vnd.github.cloak-preview+json"
         : "application/vnd.github.v3+json";
 
-    while (true) {
-      const url = `${GITHUB_API}${endpoint}?q=${encodeURIComponent(q)}&per_page=${perPage}&page=${page}`;
-      const res = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${this.token}`,
-          Accept: accept,
-        },
-      });
+    // Fetch first page to check total_count
+    const firstPage = await this.fetchSearchPage(endpoint, q, 1, perPage, accept);
 
-      if (res.status === 403) {
-        const resetAt = res.headers.get("X-RateLimit-Reset");
-        if (resetAt) {
-          const waitMs = Math.max(0, Number(resetAt) * 1000 - Date.now()) + 1000;
-          await new Promise((r) => setTimeout(r, waitMs));
-          continue; // retry same page
-        }
+    // GitHub Search API caps at 1000 results. Split date range and retry.
+    if (firstPage.total_count > 1000) {
+      const mid = midpointDate(dateRange.since, dateRange.until);
+      if (mid !== dateRange.since) {
+        const dateStr = `${dateRange.since}..${dateRange.until}`;
+        const firstHalf: DateRange = { since: dateRange.since, until: mid };
+        const secondHalf: DateRange = { since: nextDay(mid), until: dateRange.until };
+        const q1 = q.replace(dateStr, `${firstHalf.since}..${firstHalf.until}`);
+        const q2 = q.replace(dateStr, `${secondHalf.since}..${secondHalf.until}`);
+        const [items1, items2] = await Promise.all([
+          this.searchAll(endpoint, q1, firstHalf),
+          this.searchAll(endpoint, q2, secondHalf),
+        ]);
+        return [...items1, ...items2];
       }
+    }
 
-      if (!res.ok) {
-        const body = await res.text();
-        throw new Error(`GitHub API error ${res.status}: ${body}`);
-      }
+    // Normal pagination (within 1000 limit)
+    const items = [...firstPage.items];
+    let page = 2;
 
-      const data = (await res.json()) as { items: any[]; total_count: number };
+    while (items.length < firstPage.total_count && firstPage.items.length === perPage) {
+      const data = await this.fetchSearchPage(endpoint, q, page, perPage, accept);
       items.push(...data.items);
-
-      if (items.length >= data.total_count || data.items.length < perPage) {
-        break;
-      }
+      if (data.items.length < perPage) break;
       page++;
     }
 
     return items;
+  }
+
+  private async fetchSearchPage(
+    endpoint: string,
+    q: string,
+    page: number,
+    perPage: number,
+    accept: string
+  ): Promise<{ items: any[]; total_count: number }> {
+    const url = `${GITHUB_API}${endpoint}?q=${encodeURIComponent(q)}&per_page=${perPage}&page=${page}`;
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+        Accept: accept,
+      },
+    });
+
+    if (res.status === 403) {
+      const resetAt = res.headers.get("X-RateLimit-Reset");
+      if (resetAt) {
+        const waitMs = Math.max(0, Number(resetAt) * 1000 - Date.now()) + 1000;
+        await new Promise((r) => setTimeout(r, waitMs));
+        return this.fetchSearchPage(endpoint, q, page, perPage, accept);
+      }
+    }
+
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`GitHub API error ${res.status}: ${body}`);
+    }
+
+    return (await res.json()) as { items: any[]; total_count: number };
   }
 
   private async request(path: string): Promise<any> {
@@ -150,6 +183,19 @@ export class GitHubSource implements DataSource {
 
     return res.json();
   }
+}
+
+function midpointDate(since: string, until: string): string {
+  const start = new Date(since);
+  const end = new Date(until);
+  const mid = new Date(start.getTime() + (end.getTime() - start.getTime()) / 2);
+  return mid.toISOString().slice(0, 10);
+}
+
+function nextDay(date: string): string {
+  const d = new Date(date);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
 }
 
 function extractRepo(repositoryUrl: string): string {

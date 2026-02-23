@@ -31,6 +31,12 @@ export function resolveDateRange(options: CliOptions): DateRange {
       since = formatDate(d);
       break;
     }
+    case "year": {
+      const d = new Date(now);
+      d.setFullYear(d.getFullYear() - 1);
+      since = formatDate(d);
+      break;
+    }
   }
 
   return { since, until };

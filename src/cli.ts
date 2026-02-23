@@ -9,7 +9,7 @@ export function parseArgs(argv: string[]): CliOptions {
     .description("Recap your GitHub activity for a time period")
     .option(
       "-p, --period <period>",
-      "time period: week, month, quarter, or custom",
+      "time period: week, month, quarter, year, or custom",
       "week"
     )
     .option("-s, --since <date>", "start date (YYYY-MM-DD) for custom period")
@@ -28,9 +28,9 @@ export function parseArgs(argv: string[]): CliOptions {
   const period = opts.period as CliOptions["period"];
   const format = opts.format as CliOptions["format"];
 
-  if (!["week", "month", "quarter", "custom"].includes(period)) {
+  if (!["week", "month", "quarter", "year", "custom"].includes(period)) {
     throw new Error(
-      `Invalid period: ${period}. Must be week, month, quarter, or custom.`
+      `Invalid period: ${period}. Must be week, month, quarter, year, or custom.`
     );
   }
 
