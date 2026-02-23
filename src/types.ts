@@ -12,6 +12,7 @@ export interface PullRequest {
   merged: boolean;
   createdAt: string;
   mergedAt: string | null;
+  reviewCommentCount?: number;
 }
 
 export interface Commit {
@@ -22,13 +23,6 @@ export interface Commit {
   date: string;
 }
 
-export interface PRComment {
-  prTitle: string;
-  prUrl: string;
-  prNumber: number;
-  repo: string;
-}
-
 export interface ActivityData {
   source: string;
   dateRange: DateRange;
@@ -36,7 +30,6 @@ export interface ActivityData {
   prsCreated: PullRequest[];
   prsReviewed: PullRequest[];
   commits: Commit[];
-  prComments: PRComment[];
 }
 
 export interface DataSource {

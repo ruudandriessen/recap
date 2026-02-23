@@ -1,4 +1,4 @@
-import type { ActivityData, Commit, DataSource, DateRange, PRComment, PullRequest } from "../types.ts";
+import type { ActivityData, Commit, DataSource, DateRange, PullRequest } from "../types.ts";
 
 const GITHUB_API = "https://api.github.com";
 
@@ -17,16 +17,18 @@ export class GitHubSource implements DataSource {
 
   async fetch(username: string, dateRange: DateRange, org?: string): Promise<ActivityData> {
     const orgFilter = org ? ` org:${org}` : "";
-    const [prsCreated, prsReviewed, prCommentedOn, commits] = await Promise.all([
+    const [prsCreated, prsReviewed, commits] = await Promise.all([
       this.searchPRsCreated(username, dateRange, orgFilter),
       this.searchPRsReviewed(username, dateRange, orgFilter),
-      this.searchPRComments(username, dateRange, orgFilter),
       this.searchCommits(username, dateRange, orgFilter),
     ]);
 
-    // Deduplicate PR comments against PRs reviewed (by URL)
-    const reviewedUrls = new Set(prsReviewed.map((pr) => pr.url));
-    const prComments = prCommentedOn.filter((c) => !reviewedUrls.has(c.prUrl));
+    // Fetch actual review comment counts for each reviewed PR
+    await Promise.all(
+      prsReviewed.map(async (pr) => {
+        pr.reviewCommentCount = await this.fetchReviewCommentCount(pr.repo, pr.number, username);
+      })
+    );
 
     return {
       source: "github",
@@ -35,7 +37,6 @@ export class GitHubSource implements DataSource {
       prsCreated,
       prsReviewed,
       commits,
-      prComments,
     };
   }
 
@@ -56,25 +57,9 @@ export class GitHubSource implements DataSource {
     orgFilter: string
   ): Promise<PullRequest[]> {
     const { since, until } = dateRange;
-    const q = `is:pr reviewed-by:${username} -author:${username} created:${since}..${until}${orgFilter}`;
+    const q = `is:pr reviewed-by:${username} -author:${username} updated:${since}..${until}${orgFilter}`;
     const items = await this.searchAll("/search/issues", q, dateRange);
     return items.map(mapPR);
-  }
-
-  private async searchPRComments(
-    username: string,
-    dateRange: DateRange,
-    orgFilter: string
-  ): Promise<PRComment[]> {
-    const { since, until } = dateRange;
-    const q = `is:pr commenter:${username} -author:${username} created:${since}..${until}${orgFilter}`;
-    const items = await this.searchAll("/search/issues", q, dateRange);
-    return items.map((item) => ({
-      prTitle: item.title,
-      prUrl: item.html_url,
-      prNumber: item.number,
-      repo: extractRepo(item.repository_url),
-    }));
   }
 
   private async searchCommits(
@@ -92,6 +77,25 @@ export class GitHubSource implements DataSource {
       repo: extractRepo(item.repository.url),
       date: item.commit.author.date,
     }));
+  }
+
+  private async fetchReviewCommentCount(
+    repo: string,
+    prNumber: number,
+    username: string
+  ): Promise<number> {
+    let count = 0;
+    let page = 1;
+    const perPage = 100;
+    while (true) {
+      const comments = await this.request(
+        `/repos/${repo}/pulls/${prNumber}/comments?per_page=${perPage}&page=${page}`
+      );
+      count += comments.filter((c: any) => c.user?.login === username).length;
+      if (comments.length < perPage) break;
+      page++;
+    }
+    return count;
   }
 
   private async searchAll(endpoint: string, q: string, dateRange: DateRange): Promise<any[]> {
