@@ -1,5 +1,6 @@
 import { select, input } from "@inquirer/prompts";
 import type { CliOptions } from "./types.ts";
+import { PROMPT_PRESETS } from "./prompts.ts";
 
 export async function promptForOptions(): Promise<CliOptions> {
   const period = await select({
@@ -38,6 +39,32 @@ export async function promptForOptions(): Promise<CliOptions> {
     ],
   });
 
+  let prompt: string | undefined;
+
+  if (format === "summary" || format === "both") {
+    const presetChoices = PROMPT_PRESETS.map((p) => ({
+      name: p.name,
+      value: p.value,
+    }));
+
+    const promptChoice = await select({
+      message: "Prompt style:",
+      choices: [...presetChoices, { name: "Custom prompt", value: "custom" }],
+    });
+
+    if (promptChoice === "custom") {
+      prompt = await input({
+        message: "Enter your custom prompt:",
+        validate: (v) => v.trim().length > 0 || "Prompt cannot be empty",
+      });
+    } else {
+      const preset = PROMPT_PRESETS.find((p) => p.value === promptChoice);
+      if (preset) {
+        prompt = preset.prompt;
+      }
+    }
+  }
+
   const username =
     (await input({
       message: "GitHub username (leave empty for token owner):",
@@ -48,5 +75,5 @@ export async function promptForOptions(): Promise<CliOptions> {
       message: "Filter by organization (leave empty for all):",
     })) || undefined;
 
-  return { period, since, until, format, username, org };
+  return { period, since, until, format, username, org, prompt };
 }
