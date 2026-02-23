@@ -20,7 +20,8 @@ export function parseArgs(argv: string[]): CliOptions {
       "both"
     )
     .option("--username <username>", "GitHub username (default: from token)")
-    .option("-o, --org <org>", "filter by GitHub organization");
+    .option("-o, --org <org>", "filter by GitHub organization")
+    .option("-i, --interactive", "run in interactive mode");
 
   program.parse(argv, { from: "user" });
   const opts = program.opts();
@@ -44,10 +45,6 @@ export function parseArgs(argv: string[]): CliOptions {
     throw new Error("--since and --until are required with --period custom");
   }
 
-  if (!process.env.GITHUB_TOKEN) {
-    throw new Error("GITHUB_TOKEN environment variable is required");
-  }
-
   return {
     period,
     since: opts.since,
@@ -56,4 +53,11 @@ export function parseArgs(argv: string[]): CliOptions {
     username: opts.username,
     org: opts.org,
   };
+}
+
+export function shouldRunInteractive(argv: string[]): boolean {
+  if (argv.includes("-i") || argv.includes("--interactive")) {
+    return true;
+  }
+  return argv.length === 0;
 }
