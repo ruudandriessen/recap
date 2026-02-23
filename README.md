@@ -20,7 +20,7 @@ bun i @clanki/recap -g
 
 - **GitHub auth** (one of the following):
   - The [GitHub CLI](https://cli.github.com/) (`gh`) installed and authenticated — recap will use it automatically
-  - A `GITHUB_TOKEN` environment variable with read access to your repos and PRs
+  - A `GITHUB_TOKEN` or `GH_TOKEN` environment variable with read access to your repos and PRs
 - The [`claude`](https://docs.anthropic.com/en/docs/claude-code) CLI installed locally (used to generate AI summaries)
 
 ## Usage

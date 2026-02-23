@@ -6,6 +6,7 @@ import { formatStructured } from "./src/formatters/structured.ts";
 import { generateSummary } from "./src/formatters/summary.ts";
 import { promptForOptions } from "./src/interactive.ts";
 import { GitHubSource } from "./src/sources/github.ts";
+import { resolveGitHubToken } from "./src/sources/github-token.ts";
 
 async function main() {
   const argv = process.argv.slice(2);
@@ -13,13 +14,11 @@ async function main() {
     ? await promptForOptions()
     : parseArgs(argv);
 
-  if (!process.env.GITHUB_TOKEN) {
-    throw new Error("GITHUB_TOKEN environment variable is required");
-  }
+  const token = await resolveGitHubToken();
 
   const dateRange = resolveDateRange(options);
 
-  const github = new GitHubSource(process.env.GITHUB_TOKEN!);
+  const github = new GitHubSource(token);
 
   const usernameSpinner = ora("Resolving GitHub username...").start();
   const username = options.username ?? (await github.resolveUsername());
