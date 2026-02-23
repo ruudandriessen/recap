@@ -4,7 +4,7 @@ import { formatStructured } from "./structured.ts";
 export async function generateSummary(data: ActivityData): Promise<string> {
   const structuredText = formatStructured(data);
 
-  const prompt = `Here is my GitHub activity for the period ${data.dateRange.since} to ${data.dateRange.until}. Please write a concise professional summary (2-4 paragraphs) of what I accomplished, highlighting key contributions, themes, and impact. Group related work together. Keep it suitable for a standup update or weekly report.
+  const prompt = `Here is my GitHub activity for the period ${data.dateRange.since} to ${data.dateRange.until}. Please write a professional performance review summary (3-5 paragraphs) of what I accomplished. Highlight key contributions, themes, impact, and areas of ownership. Group related work together into narratives. Call out cross-team collaboration, technical leadership, and significant deliverables. Keep it suitable for a performance review or promotion packet.
 
 ${structuredText}
 

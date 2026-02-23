@@ -47,3 +47,12 @@ test("resolveDateRange for quarter returns ~90-day range", () => {
   expect(diffDays).toBeGreaterThanOrEqual(89);
   expect(diffDays).toBeLessThanOrEqual(92);
 });
+
+test("resolveDateRange for year returns ~365-day range", () => {
+  const range = resolveDateRange({ period: "year", format: "text" });
+  const since = new Date(range.since);
+  const until = new Date(range.until);
+  const diffDays = (until.getTime() - since.getTime()) / (1000 * 60 * 60 * 24);
+  expect(diffDays).toBeGreaterThanOrEqual(365);
+  expect(diffDays).toBeLessThanOrEqual(366);
+});

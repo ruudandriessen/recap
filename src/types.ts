@@ -45,7 +45,7 @@ export interface DataSource {
 }
 
 export interface CliOptions {
-  period: "week" | "month" | "quarter" | "custom";
+  period: "week" | "month" | "quarter" | "year" | "custom";
   since?: string;
   until?: string;
   format: "text" | "summary" | "both";
