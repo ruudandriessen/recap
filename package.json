@@ -2,8 +2,15 @@
   "name": "@clanki/recap",
   "version": "0.1.0",
   "description": "A CLI tool that generates fair, unbiased engineering reviews from your GitHub activity",
-  "module": "index.ts",
+  "module": "src/api.ts",
   "type": "module",
+  "exports": {
+    ".": {
+      "bun": "./src/api.ts",
+      "import": "./dist/api.js",
+      "default": "./dist/api.js"
+    }
+  },
   "license": "MIT",
   "bin": {
     "recap": "./dist/index.js"
@@ -15,7 +22,7 @@
   ],
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "build": "bun build ./index.ts --outdir dist --target node --format esm",
+    "build": "bun build ./index.ts ./src/api.ts --outdir dist --target node --format esm",
     "prepublishOnly": "bun run typecheck && bun run build"
   },
   "devDependencies": {
