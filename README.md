@@ -26,12 +26,13 @@ bun run index.ts [options]
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `-p, --period <period>` | Time period: `week`, `month`, `quarter`, `year`, or `custom` | `week` |
+| `-t, --period <period>` | Time period: `week`, `month`, `quarter`, `year`, or `custom` | `week` |
 | `-s, --since <date>` | Start date (`YYYY-MM-DD`), required with `--period custom` | — |
 | `-u, --until <date>` | End date (`YYYY-MM-DD`), required with `--period custom` | — |
 | `-f, --format <format>` | Output format: `text`, `summary`, or `both` | `both` |
 | `--username <username>` | GitHub username (defaults to the token owner) | — |
 | `-o, --org <org>` | Filter by GitHub organization | — |
+| `-p, --prompt <prompt>` | Custom prompt (replaces default review prompt; activity data is appended) | — |
 
 ### Examples
 
@@ -40,11 +41,14 @@ bun run index.ts [options]
 bun run index.ts
 
 # Last quarter, text only
-bun run index.ts -p quarter -f text
+bun run index.ts -t quarter -f text
 
 # Custom date range for a specific org
-bun run index.ts -p custom -s 2025-01-01 -u 2025-03-31 -o my-org
+bun run index.ts -t custom -s 2025-01-01 -u 2025-03-31 -o my-org
 
 # AI summary only for the past month
-bun run index.ts -p month -f summary
+bun run index.ts -t month -f summary
+
+# Custom prompt
+bun run index.ts -p "Summarize this developer's work in 3 bullet points."
 ```

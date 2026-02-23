@@ -44,4 +44,5 @@ export interface CliOptions {
   format: "text" | "summary" | "both";
   username?: string;
   org?: string;
+  prompt?: string;
 }
