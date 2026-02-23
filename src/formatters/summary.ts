@@ -3,11 +3,24 @@ import { formatStructured } from "./structured.ts";
 
 export async function generateSummary(
   data: ActivityData,
-  period: string
+  period: string,
+  customPrompt?: string
 ): Promise<string> {
   const structuredText = formatStructured(data);
 
-  const prompt = `You are an engineering manager reviewing a developer's GitHub activity. Below is ${data.username}'s GitHub activity for ${period === "custom" ? "a custom period" : `the past ${period}`} (${data.dateRange.since} to ${data.dateRange.until}).
+  const activityContext = `
+Username: ${data.username}
+Period: ${period === "custom" ? "custom period" : `past ${period}`} (${data.dateRange.since} to ${data.dateRange.until})
+
+${structuredText}
+
+PRs Created:
+${data.prsCreated.map((pr) => `- ${pr.title} (#${pr.number}) [${pr.merged ? "merged" : pr.state}]`).join("\n") || "(none)"}
+
+Commits (first 50):
+${data.commits.slice(0, 50).map((c) => `- ${c.message} (${c.repo})`).join("\n") || "(none)"}`;
+
+  const defaultInstructions = `You are an engineering manager reviewing a developer's GitHub activity. Below is ${data.username}'s GitHub activity for ${period === "custom" ? "a custom period" : `the past ${period}`} (${data.dateRange.since} to ${data.dateRange.until}).
 
 Provide an unbiased, honest engineering review of this person's work. This should NOT be a simple recap — it should be a fair evaluation. Consider that this represents ${period === "custom" ? "a custom time period" : `one ${period}`} of output.
 
@@ -20,15 +33,9 @@ Your review should cover:
 6. **Areas for improvement** — list concrete areas where they could do better.
 7. **Estimated engineer level** — based solely on the evidence in this activity, classify this person into one of these levels: Junior, SE2, Senior, Principal, or Senior Principal. Explain your reasoning.
 
-Be direct and honest. Don't sugarcoat, but be fair. If there's not enough data to assess something, say so.
+Be direct and honest. Don't sugarcoat, but be fair. If there's not enough data to assess something, say so.`;
 
-${structuredText}
-
-PRs Created:
-${data.prsCreated.map((pr) => `- ${pr.title} (#${pr.number}) [${pr.merged ? "merged" : pr.state}]`).join("\n") || "(none)"}
-
-Commits (first 50):
-${data.commits.slice(0, 50).map((c) => `- ${c.message} (${c.repo})`).join("\n") || "(none)"}`;
+  const prompt = `${customPrompt ?? defaultInstructions}\n\n${activityContext}`;
 
   const env = { ...process.env };
   delete env.ANTHROPIC_API_KEY;

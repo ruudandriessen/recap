@@ -8,7 +8,7 @@ export function parseArgs(argv: string[]): CliOptions {
     .name("recap")
     .description("Recap your GitHub activity for a time period")
     .option(
-      "-p, --period <period>",
+      "-t, --period <period>",
       "time period: week, month, quarter, year, or custom",
       "week"
     )
@@ -21,7 +21,8 @@ export function parseArgs(argv: string[]): CliOptions {
     )
     .option("--username <username>", "GitHub username (default: from token)")
     .option("-o, --org <org>", "filter by GitHub organization")
-    .option("-i, --interactive", "run in interactive mode");
+    .option("-i, --interactive", "run in interactive mode")
+    .option("-p, --prompt <prompt>", "custom prompt (replaces default review prompt; activity data is appended)");
 
   program.parse(argv, { from: "user" });
   const opts = program.opts();
@@ -52,6 +53,7 @@ export function parseArgs(argv: string[]): CliOptions {
     format,
     username: opts.username,
     org: opts.org,
+    prompt: opts.prompt,
   };
 }
 
