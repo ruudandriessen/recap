@@ -18,7 +18,7 @@ Your review should cover:
 4. **Collaboration** — assess their review activity and engagement with others' work.
 5. **Pros** — list specific strengths demonstrated in this period.
 6. **Areas for improvement** — list concrete areas where they could do better.
-7. **Estimated engineer level** — based solely on the evidence in this activity, estimate what level of engineer this person appears to be (e.g. junior, mid-level, senior, staff). Explain your reasoning.
+7. **Estimated engineer level** — based solely on the evidence in this activity, classify this person into one of these levels: Junior, SE2, Senior, Principal, or Senior Principal. Explain your reasoning.
 
 Be direct and honest. Don't sugarcoat, but be fair. If there's not enough data to assess something, say so.
 
