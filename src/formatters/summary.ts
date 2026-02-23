@@ -1,3 +1,4 @@
+import { execFile } from "node:child_process";
 import type { ActivityData } from "../types.ts";
 import { formatStructured } from "./structured.ts";
 import { PROMPT_PRESETS } from "../prompts.ts";
@@ -28,23 +29,17 @@ ${data.commits.slice(0, 50).map((c) => `- ${c.message} (${c.repo})`).join("\n") 
   const env = { ...process.env };
   delete env.ANTHROPIC_API_KEY;
 
-  const proc = Bun.spawn(["claude", "-p", prompt], {
-    stdout: "pipe",
-    stderr: "pipe",
-    env,
+  const { stdout, stderr } = await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
+    execFile("claude", ["-p", prompt], { env, maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+      if (error) {
+        reject(new Error(
+          `claude CLI failed (exit ${error.code})\nstderr: ${stderr}\nstdout: ${stdout}`
+        ));
+      } else {
+        resolve({ stdout, stderr });
+      }
+    });
   });
-
-  const [stdout, stderr, exitCode] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-    proc.exited,
-  ]);
-
-  if (exitCode !== 0) {
-    throw new Error(
-      `claude CLI failed (exit ${exitCode})\nstderr: ${stderr}\nstdout: ${stdout}`
-    );
-  }
 
   return stdout.trim();
 }
