@@ -1,13 +1,22 @@
 #!/usr/bin/env bun
 import ora from "ora";
-import { parseArgs } from "./src/cli.ts";
+import { parseArgs, shouldRunInteractive } from "./src/cli.ts";
 import { resolveDateRange } from "./src/config.ts";
 import { formatStructured } from "./src/formatters/structured.ts";
 import { generateSummary } from "./src/formatters/summary.ts";
+import { promptForOptions } from "./src/interactive.ts";
 import { GitHubSource } from "./src/sources/github.ts";
 
 async function main() {
-  const options = parseArgs(process.argv.slice(2));
+  const argv = process.argv.slice(2);
+  const options = shouldRunInteractive(argv)
+    ? await promptForOptions()
+    : parseArgs(argv);
+
+  if (!process.env.GITHUB_TOKEN) {
+    throw new Error("GITHUB_TOKEN environment variable is required");
+  }
+
   const dateRange = resolveDateRange(options);
 
   const github = new GitHubSource(process.env.GITHUB_TOKEN!);
@@ -41,6 +50,9 @@ async function main() {
 }
 
 main().catch((err) => {
+  if (err.name === "ExitPromptError") {
+    process.exit(0);
+  }
   console.error("Error:", err.message);
   process.exit(1);
 });
