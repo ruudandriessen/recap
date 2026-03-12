@@ -86,5 +86,11 @@ export async function promptForOptions(): Promise<CliOptions> {
       })) || undefined
     : undefined;
 
-  return { period, since, until, format, username, org, prompt, source };
+  const slackUsername = source !== "github"
+    ? (await input({
+        message: "Slack user ID to target, e.g. U01ABC123 (leave empty for token owner):",
+      })) || undefined
+    : undefined;
+
+  return { period, since, until, format, username, org, prompt, source, slackUsername };
 }

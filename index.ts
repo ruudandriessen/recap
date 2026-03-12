@@ -32,7 +32,7 @@ async function handleAuth(argv: string[]) {
   process.exit(1);
 }
 
-async function resolveSources(options: { org?: string; source?: SourceOption }): Promise<CachedSource[]> {
+async function resolveSources(options: { org?: string; source?: SourceOption; slackUsername?: string }): Promise<CachedSource[]> {
   const sourceOption = options.source ?? "all";
   const sources: CachedSource[] = [];
 
@@ -44,7 +44,7 @@ async function resolveSources(options: { org?: string; source?: SourceOption }):
   if (sourceOption === "slack" || sourceOption === "all") {
     const creds = resolveSlackCredentials();
     if (creds) {
-      sources.push(createCachedSource(createSlackSource(creds)));
+      sources.push(createCachedSource(createSlackSource(creds, options.slackUsername)));
     } else if (sourceOption === "slack") {
       throw new Error(
         "No Slack credentials found. Either:\n" +
@@ -109,7 +109,10 @@ function mergeActivityData(results: ActivityData[]): ActivityData {
     base.prsCreated.push(...r.prsCreated);
     base.prsReviewed.push(...r.prsReviewed);
     base.commits.push(...r.commits);
-    if (r.slack) base.slack = r.slack;
+    if (r.slack) {
+      base.slack = r.slack;
+      if (r.slackUsername) base.slackUsername = r.slackUsername;
+    }
   }
   base.source = "all";
   return base;

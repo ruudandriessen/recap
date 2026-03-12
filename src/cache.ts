@@ -28,6 +28,7 @@ export interface CachedData {
   prsReviewed: ActivityData["prsReviewed"];
   commits: ActivityData["commits"];
   slackMessages?: SlackActivity["messages"];
+  slackUsername?: string;
 }
 
 async function loadCache(key: CacheKey): Promise<CachedData | null> {
@@ -132,6 +133,7 @@ function mergeActivity(existing: CachedData, incoming: ActivityData): CachedData
     prsReviewed: dedup(existing.prsReviewed, incoming.prsReviewed, (pr) => pr.url),
     commits: dedup(existing.commits, incoming.commits, (c) => c.sha),
     slackMessages,
+    slackUsername: incoming.slackUsername ?? existing.slackUsername,
   };
 }
 
@@ -167,6 +169,7 @@ export function filterByDateRange(
     source: sourceName,
     dateRange,
     username,
+    slackUsername: cached.slackUsername,
     prsCreated: cached.prsCreated.filter((pr) => pr.createdAt >= since && pr.createdAt <= untilEnd),
     prsReviewed: cached.prsReviewed.filter((pr) => pr.createdAt >= since && pr.createdAt <= untilEnd),
     commits: cached.commits.filter((c) => c.date >= since && c.date <= untilEnd),
@@ -221,6 +224,7 @@ export function createCachedSource<K extends CacheKey>(inner: DataSource<K>) {
           prsReviewed: data.prsReviewed,
           commits: data.commits,
           slackMessages: data.slack?.messages,
+          slackUsername: data.slackUsername,
         };
         progress?.onFetched?.(gap);
       }
