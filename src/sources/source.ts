@@ -1,4 +1,4 @@
-import type { ActivityData, DateRange } from "../types.ts";
+import type { DateRange } from "../types.ts";
 
 /**
  * Cache key object encoding every parameter that affects the data a source
@@ -7,11 +7,11 @@ import type { ActivityData, DateRange } from "../types.ts";
  */
 export type CacheKey = Record<string, string | undefined>;
 
-export interface DataSource<K extends CacheKey = CacheKey> {
+export interface DataSource<K extends CacheKey = CacheKey, R = unknown> {
   /** Human-readable name (e.g. "github") */
   name: string;
   /** Build the cache key for a given username. */
   makeCacheKey(username: string): K;
   resolveUsername(): Promise<string>;
-  fetch(key: K, dateRange: DateRange): Promise<ActivityData>;
+  fetch(key: K, dateRange: DateRange): Promise<R>;
 }

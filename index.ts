@@ -11,7 +11,7 @@ import { resolveGitHubToken } from "./src/sources/github/token.ts";
 import { createSlackSource, resolveSlackCredentials } from "./src/sources/slack/index.ts";
 import { createCachedSource } from "./src/cache.ts";
 import type { CachedSource, FetchProgress } from "./src/cache.ts";
-import type { ActivityData, DateRange } from "./src/types.ts";
+import type { ActivityData, DateRange, SourceResult } from "./src/types.ts";
 
 async function handleAuth(argv: string[]) {
   const subcommand = argv[1];
@@ -73,7 +73,7 @@ async function resolveUser(sources: CachedSource[], username?: string): Promise<
   throw new Error("Could not resolve username. Please provide --username.");
 }
 
-function makeFetchProgress(label: string): FetchProgress & { done(data: ActivityData): void } {
+function makeFetchProgress(label: string): FetchProgress & { done(data: SourceResult): void } {
   let spinner: ReturnType<typeof ora> | null = null;
   return {
     onCacheHit(dateRange: DateRange) {
@@ -84,38 +84,51 @@ function makeFetchProgress(label: string): FetchProgress & { done(data: Activity
       spinner = ora(`${label}: fetching ${rangeStr}`).start();
     },
     onFetched() {},
-    done(data: ActivityData) {
+    done(data: SourceResult) {
       const parts: string[] = [];
-      if (data.prsCreated.length) parts.push(`${data.prsCreated.length} PRs created`);
-      if (data.prsReviewed.length) parts.push(`${data.prsReviewed.length} PRs reviewed`);
-      if (data.commits.length) parts.push(`${data.commits.length} commits`);
-      if (data.slack) parts.push(`${data.slack.totalCount} Slack messages`);
+      switch (data.source) {
+        case "github":
+          if (data.prsCreated.length) parts.push(`${data.prsCreated.length} PRs created`);
+          if (data.prsReviewed.length) parts.push(`${data.prsReviewed.length} PRs reviewed`);
+          if (data.commits.length) parts.push(`${data.commits.length} commits`);
+          break;
+        case "slack":
+          parts.push(`${data.slack.totalCount} Slack messages`);
+          break;
+      }
       spinner?.succeed(`${label}: ${parts.join(", ") || "no data"}`);
     },
   };
 }
 
-function mergeActivityData(results: ActivityData[]): ActivityData {
+function mergeSourceResults(results: SourceResult[]): ActivityData {
   if (results.length === 0) throw new Error("No data sources produced results");
-  if (results.length === 1) return results[0]!;
 
-  const base = { ...results[0]! };
-  base.prsCreated = [...base.prsCreated];
-  base.prsReviewed = [...base.prsReviewed];
-  base.commits = [...base.commits];
+  const first = results[0]!;
+  const merged: ActivityData = {
+    source: results.length === 1 ? first.source : "all",
+    dateRange: first.dateRange,
+    username: first.username,
+    prsCreated: [],
+    prsReviewed: [],
+    commits: [],
+  };
 
-  for (let i = 1; i < results.length; i++) {
-    const r = results[i]!;
-    base.prsCreated.push(...r.prsCreated);
-    base.prsReviewed.push(...r.prsReviewed);
-    base.commits.push(...r.commits);
-    if (r.slack) {
-      base.slack = r.slack;
-      if (r.slackUsername) base.slackUsername = r.slackUsername;
+  for (const r of results) {
+    switch (r.source) {
+      case "github":
+        merged.prsCreated.push(...r.prsCreated);
+        merged.prsReviewed.push(...r.prsReviewed);
+        merged.commits.push(...r.commits);
+        break;
+      case "slack":
+        merged.slack = r.slack;
+        if (r.slackUsername) merged.slackUsername = r.slackUsername;
+        break;
     }
   }
-  base.source = "all";
-  return base;
+
+  return merged;
 }
 
 async function fetchAll(
@@ -123,14 +136,14 @@ async function fetchAll(
   username: string,
   dateRange: DateRange
 ): Promise<ActivityData> {
-  const results: ActivityData[] = [];
+  const results: SourceResult[] = [];
   for (const source of sources) {
     const progress = makeFetchProgress(source.name);
     const data = await source.fetch(username, dateRange, progress);
     progress.done(data);
     results.push(data);
   }
-  return mergeActivityData(results);
+  return mergeSourceResults(results);
 }
 
 async function fetchAndCache(command: ParsedCommand): Promise<void> {
@@ -148,7 +161,7 @@ async function summarizeFromCache(command: ParsedCommand): Promise<void> {
   const dateRange = resolveDateRange(options);
 
   const spinner = ora("Loading cached data...").start();
-  const results: ActivityData[] = [];
+  const results: SourceResult[] = [];
   for (const source of sources) {
     const data = await source.loadCached(username, dateRange);
     if (data) results.push(data);
@@ -159,7 +172,7 @@ async function summarizeFromCache(command: ParsedCommand): Promise<void> {
     process.exit(1);
   }
 
-  const data = mergeActivityData(results);
+  const data = mergeSourceResults(results);
   const parts: string[] = [];
   if (data.prsCreated.length) parts.push(`${data.prsCreated.length} PRs created`);
   if (data.prsReviewed.length) parts.push(`${data.prsReviewed.length} PRs reviewed`);

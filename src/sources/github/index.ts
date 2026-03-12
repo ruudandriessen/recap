@@ -1,4 +1,4 @@
-import type { ActivityData, DateRange } from "../../types.ts";
+import type { DateRange } from "../../types.ts";
 import type { CacheKey, DataSource } from "../source.ts";
 
 export interface PullRequest {
@@ -22,6 +22,15 @@ export interface Commit {
 }
 
 const GITHUB_API = "https://api.github.com";
+
+export interface GitHubSourceResult {
+  source: "github";
+  dateRange: DateRange;
+  username: string;
+  prsCreated: PullRequest[];
+  prsReviewed: PullRequest[];
+  commits: Commit[];
+}
 
 export interface GitHubCacheKey extends CacheKey {
   source: "github";
@@ -190,7 +199,7 @@ export function createGitHubSource(token: string, org?: string) {
       return res.login;
     },
 
-    async fetch(key: GitHubCacheKey, dateRange: DateRange): Promise<ActivityData> {
+    async fetch(key: GitHubCacheKey, dateRange: DateRange): Promise<GitHubSourceResult> {
       const orgFilter = key.org ? ` org:${key.org}` : "";
       const [prsCreated, prsReviewed, commits] = await Promise.all([
         searchPRsCreated(key.username, dateRange, orgFilter),
@@ -213,7 +222,7 @@ export function createGitHubSource(token: string, org?: string) {
         commits,
       };
     },
-  } satisfies DataSource<GitHubCacheKey>;
+  } satisfies DataSource<GitHubCacheKey, GitHubSourceResult>;
 }
 
 function midpointDate(since: string, until: string): string {
