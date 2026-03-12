@@ -1,19 +1,22 @@
 #!/usr/bin/env node
 import ora from "ora";
 import { parseArgs, shouldRunInteractive } from "./src/cli.ts";
+import type { ParsedCommand } from "./src/cli.ts";
 import { resolveDateRange } from "./src/config.ts";
 import { formatStructured } from "./src/formatters/structured.ts";
 import { generateSummary } from "./src/formatters/summary.ts";
 import { promptForOptions } from "./src/interactive.ts";
-import { GitHubSource } from "./src/sources/github.ts";
+import { createGitHubSource } from "./src/sources/github.ts";
 import { resolveGitHubToken } from "./src/sources/github-token.ts";
-import { SlackSource, resolveSlackCredentials } from "./src/sources/slack/index.ts";
-import type { ActivityData } from "./src/types.ts";
+import { createSlackSource, resolveSlackCredentials } from "./src/sources/slack/index.ts";
+import { createCachedSource } from "./src/cache.ts";
+import type { CachedSource, FetchProgress } from "./src/cache.ts";
+import type { ActivityData, DateRange, SourceOption } from "./src/types.ts";
 
 async function handleAuth(argv: string[]) {
   const subcommand = argv[1];
   if (subcommand === "slack") {
-    const action = argv[2]; // undefined, "logout", or "status"
+    const action = argv[2];
     if (action === "logout") {
       const { handleAuthSlackLogout } = await import("./src/auth.ts");
       return handleAuthSlackLogout();
@@ -29,60 +32,20 @@ async function handleAuth(argv: string[]) {
   process.exit(1);
 }
 
-async function main() {
-  const argv = process.argv.slice(2);
+async function resolveSources(options: { org?: string; source?: SourceOption }): Promise<CachedSource[]> {
+  const sourceOption = options.source ?? "all";
+  const sources: CachedSource[] = [];
 
-  if (argv[0] === "auth") {
-    return handleAuth(argv);
-  }
-
-  const options = shouldRunInteractive(argv)
-    ? await promptForOptions()
-    : parseArgs(argv);
-
-  const dateRange = resolveDateRange(options);
-  const source = options.source ?? "all";
-  const useGitHub = source === "github" || source === "all";
-  const useSlack = source === "slack" || source === "all";
-
-  let data: ActivityData;
-
-  if (useGitHub) {
+  if (sourceOption === "github" || sourceOption === "all") {
     const token = await resolveGitHubToken();
-    const github = new GitHubSource(token);
-
-    const usernameSpinner = ora("Resolving GitHub username...").start();
-    const username = options.username ?? (await github.resolveUsername());
-    usernameSpinner.succeed(`User: ${username}`);
-
-    const fetchSpinner = ora(
-      `Fetching activity from ${dateRange.since} to ${dateRange.until}...`
-    ).start();
-    data = await github.fetch(username, dateRange, options.org);
-    fetchSpinner.succeed("GitHub activity fetched");
-  } else {
-    data = {
-      source: "slack",
-      dateRange,
-      username: "unknown",
-      prsCreated: [],
-      prsReviewed: [],
-      commits: [],
-    };
+    sources.push(createCachedSource(createGitHubSource(token, options.org)));
   }
 
-  if (useSlack) {
+  if (sourceOption === "slack" || sourceOption === "all") {
     const creds = resolveSlackCredentials();
     if (creds) {
-      const slackSpinner = ora("Fetching Slack messages...").start();
-      try {
-        const slack = new SlackSource(creds);
-        data.slack = await slack.fetchActivity(dateRange);
-        slackSpinner.succeed(`Slack: ${data.slack.totalCount} messages fetched`);
-      } catch (err: any) {
-        slackSpinner.warn(`Slack fetch failed: ${err.message}`);
-      }
-    } else if (source === "slack") {
+      sources.push(createCachedSource(createSlackSource(creds)));
+    } else if (sourceOption === "slack") {
       throw new Error(
         "No Slack credentials found. Either:\n" +
         "  • Run: recap auth slack\n" +
@@ -91,21 +54,179 @@ async function main() {
     }
   }
 
-  console.log("");
+  return sources;
+}
 
-  if (options.format === "text" || options.format === "both") {
+async function resolveUser(sources: CachedSource[], username?: string): Promise<string> {
+  if (username) return username;
+  const spinner = ora("Resolving username...").start();
+  for (const source of sources) {
+    try {
+      const resolved = await source.resolveUsername();
+      spinner.succeed(`User: ${resolved}`);
+      return resolved;
+    } catch {
+      // This source can't resolve username, try next
+    }
+  }
+  spinner.fail("Could not resolve username");
+  throw new Error("Could not resolve username. Please provide --username.");
+}
+
+function makeFetchProgress(label: string): FetchProgress & { done(data: ActivityData): void } {
+  let spinner: ReturnType<typeof ora> | null = null;
+  return {
+    onCacheHit(dateRange: DateRange) {
+      ora().succeed(`${label}: using cache (${dateRange.since} to ${dateRange.until})`);
+    },
+    onFetching(gaps: DateRange[]) {
+      const rangeStr = gaps.map((g) => `${g.since}..${g.until}`).join(", ");
+      spinner = ora(`${label}: fetching ${rangeStr}`).start();
+    },
+    onFetched() {},
+    done(data: ActivityData) {
+      const parts: string[] = [];
+      if (data.prsCreated.length) parts.push(`${data.prsCreated.length} PRs created`);
+      if (data.prsReviewed.length) parts.push(`${data.prsReviewed.length} PRs reviewed`);
+      if (data.commits.length) parts.push(`${data.commits.length} commits`);
+      if (data.slack) parts.push(`${data.slack.totalCount} Slack messages`);
+      spinner?.succeed(`${label}: ${parts.join(", ") || "no data"}`);
+    },
+  };
+}
+
+function mergeActivityData(results: ActivityData[]): ActivityData {
+  if (results.length === 0) throw new Error("No data sources produced results");
+  if (results.length === 1) return results[0]!;
+
+  const base = { ...results[0]! };
+  base.prsCreated = [...base.prsCreated];
+  base.prsReviewed = [...base.prsReviewed];
+  base.commits = [...base.commits];
+
+  for (let i = 1; i < results.length; i++) {
+    const r = results[i]!;
+    base.prsCreated.push(...r.prsCreated);
+    base.prsReviewed.push(...r.prsReviewed);
+    base.commits.push(...r.commits);
+    if (r.slack) base.slack = r.slack;
+  }
+  base.source = "all";
+  return base;
+}
+
+async function fetchAll(
+  sources: CachedSource[],
+  username: string,
+  dateRange: DateRange
+): Promise<ActivityData> {
+  const results: ActivityData[] = [];
+  for (const source of sources) {
+    const progress = makeFetchProgress(source.name);
+    const data = await source.fetch(username, dateRange, progress);
+    progress.done(data);
+    results.push(data);
+  }
+  return mergeActivityData(results);
+}
+
+async function fetchAndCache(command: ParsedCommand): Promise<void> {
+  const { options } = command;
+  const sources = await resolveSources(options);
+  const username = await resolveUser(sources, options.username);
+  const dateRange = resolveDateRange(options);
+  await fetchAll(sources, username, dateRange);
+}
+
+async function summarizeFromCache(command: ParsedCommand): Promise<void> {
+  const { options } = command;
+  const sources = await resolveSources(options);
+  const username = options.username!;
+  const dateRange = resolveDateRange(options);
+
+  const spinner = ora("Loading cached data...").start();
+  const results: ActivityData[] = [];
+  for (const source of sources) {
+    const data = await source.loadCached(username, dateRange);
+    if (data) results.push(data);
+  }
+
+  if (results.length === 0) {
+    spinner.fail(`No cached data found for ${username}. Run 'recap fetch' first.`);
+    process.exit(1);
+  }
+
+  const data = mergeActivityData(results);
+  const parts: string[] = [];
+  if (data.prsCreated.length) parts.push(`${data.prsCreated.length} PRs created`);
+  if (data.prsReviewed.length) parts.push(`${data.prsReviewed.length} PRs reviewed`);
+  if (data.commits.length) parts.push(`${data.commits.length} commits`);
+  if (data.slack) parts.push(`${data.slack.totalCount} Slack messages`);
+  spinner.succeed(`From cache: ${parts.join(", ") || "no data"}`);
+
+  console.log("");
+  await outputResults(data, options.format, options.period, options.prompt);
+}
+
+async function defaultFlow(command: ParsedCommand): Promise<void> {
+  const { options } = command;
+  const sources = await resolveSources(options);
+  const username = await resolveUser(sources, options.username);
+  const dateRange = resolveDateRange(options);
+
+  const data = await fetchAll(sources, username, dateRange);
+
+  console.log("");
+  await outputResults(data, options.format, options.period, options.prompt);
+}
+
+async function outputResults(
+  data: ActivityData,
+  format: string,
+  period: string,
+  prompt?: string
+): Promise<void> {
+  if (format === "text" || format === "both") {
     console.log(formatStructured(data));
   }
 
-  if (options.format === "summary" || options.format === "both") {
-    if (options.format === "both") {
+  if (format === "summary" || format === "both") {
+    if (format === "both") {
       console.log("\n");
     }
     const summarySpinner = ora("Generating AI summary...").start();
-    const summary = await generateSummary(data, options.period, options.prompt);
+    const summary = await generateSummary(data, period, prompt);
     summarySpinner.succeed("AI Summary");
     console.log("");
     console.log(summary);
+  }
+}
+
+async function main() {
+  const argv = process.argv.slice(2);
+
+  if (argv[0] === "auth") {
+    return handleAuth(argv);
+  }
+
+  if (shouldRunInteractive(argv)) {
+    const options = await promptForOptions();
+    await defaultFlow({ mode: "default", options });
+    return;
+  }
+
+  const command = parseArgs(argv);
+
+  switch (command.mode) {
+    case "fetch":
+      await fetchAndCache(command);
+      break;
+    case "summarize":
+      await summarizeFromCache(command);
+      break;
+    default:
+      await defaultFlow(command);
+      break;
   }
 }
 
