@@ -25,6 +25,7 @@ function parseRoastArgs(argv: string[]): CliOptions {
     username: opts.username,
     org: opts.org,
     prompt: roastPrompt,
+    source: "all",
   };
 }
 
@@ -53,7 +54,8 @@ export function parseArgs(argv: string[]): CliOptions {
     .option("--username <username>", "GitHub username (default: from token)")
     .option("-o, --org <org>", "filter by GitHub organization")
     .option("-i, --interactive", "run in interactive mode")
-    .option("-p, --prompt <prompt>", "custom prompt (replaces default review prompt; activity data is appended)");
+    .option("-p, --prompt <prompt>", "custom prompt (replaces default review prompt; activity data is appended)")
+    .option("--source <source>", "data source: github, slack, or all (default: all)", "all");
 
   program.parse(argv, { from: "user" });
 
@@ -74,6 +76,13 @@ export function parseArgs(argv: string[]): CliOptions {
     );
   }
 
+  const source = (opts.source ?? "all") as NonNullable<CliOptions["source"]>;
+  if (!["github", "slack", "all"].includes(source)) {
+    throw new Error(
+      `Invalid source: ${source}. Must be github, slack, or all.`
+    );
+  }
+
   if (period === "custom" && (!opts.since || !opts.until)) {
     throw new Error("--since and --until are required with --period custom");
   }
@@ -86,10 +95,11 @@ export function parseArgs(argv: string[]): CliOptions {
     username: opts.username,
     org: opts.org,
     prompt: opts.prompt,
+    source,
   };
 }
 
-const SUBCOMMANDS: string[] = ["roast"];
+const SUBCOMMANDS: string[] = ["roast", "auth"];
 
 export function shouldRunInteractive(argv: string[]): boolean {
   if (argv.includes("-i") || argv.includes("--interactive")) {

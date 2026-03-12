@@ -23,6 +23,20 @@ export interface Commit {
   date: string;
 }
 
+export interface SlackMessage {
+  text: string;
+  channel: string;
+  channelType: "public" | "private" | "dm" | "group_dm";
+  timestamp: string;
+  permalink?: string;
+}
+
+export interface SlackActivity {
+  messages: SlackMessage[];
+  channelBreakdown: Record<string, number>;
+  totalCount: number;
+}
+
 export interface ActivityData {
   source: string;
   dateRange: DateRange;
@@ -30,12 +44,15 @@ export interface ActivityData {
   prsCreated: PullRequest[];
   prsReviewed: PullRequest[];
   commits: Commit[];
+  slack?: SlackActivity;
 }
 
 export interface DataSource {
   name: string;
   fetch(username: string, dateRange: DateRange): Promise<ActivityData>;
 }
+
+export type SourceOption = "github" | "slack" | "all";
 
 export interface CliOptions {
   period: "week" | "month" | "quarter" | "year" | "custom";
@@ -45,4 +62,5 @@ export interface CliOptions {
   username?: string;
   org?: string;
   prompt?: string;
+  source?: SourceOption;
 }

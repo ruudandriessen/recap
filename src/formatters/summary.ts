@@ -73,7 +73,7 @@ export async function generateSummary(
 ): Promise<string> {
   const structuredText = formatStructured(data);
 
-  const activityContext = `
+  let activityContext = `
 Username: ${data.username}
 Period: ${period === "custom" ? "custom period" : `past ${period}`} (${data.dateRange.since} to ${data.dateRange.until})
 
@@ -84,6 +84,20 @@ ${data.prsCreated.map((pr) => `- ${pr.title} (#${pr.number}) [${pr.merged ? "mer
 
 Commits (first 50):
 ${data.commits.slice(0, 50).map((c) => `- ${c.message} (${c.repo})`).join("\n") || "(none)"}`;
+
+  if (data.slack && data.slack.messages.length > 0) {
+    const channelCount = Object.keys(data.slack.channelBreakdown).length;
+    activityContext += `\n\nSlack Messages (${data.slack.totalCount} total across ${channelCount} channels):\n`;
+    activityContext += `Channel breakdown:\n${Object.entries(data.slack.channelBreakdown)
+      .sort((a, b) => b[1] - a[1])
+      .map(([ch, count]) => `  ${ch}: ${count}`)
+      .join("\n")}\n\n`;
+    activityContext += `Sample messages (first 100):\n`;
+    activityContext += data.slack.messages
+      .slice(0, 100)
+      .map((m) => `- [${m.channel}] ${m.text.slice(0, 200)}`)
+      .join("\n");
+  }
 
   const prompt = `${customPrompt ?? DEFAULT_PROMPT}\n\n${activityContext}`;
 

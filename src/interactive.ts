@@ -65,15 +65,26 @@ export async function promptForOptions(): Promise<CliOptions> {
     }
   }
 
-  const username =
-    (await input({
-      message: "GitHub username (leave empty for token owner):",
-    })) || undefined;
+  const source = await select({
+    message: "Data sources:",
+    choices: [
+      { name: "GitHub + Slack (if available)", value: "all" as const },
+      { name: "GitHub only", value: "github" as const },
+      { name: "Slack only", value: "slack" as const },
+    ],
+  });
 
-  const org =
-    (await input({
-      message: "Filter by organization (leave empty for all):",
-    })) || undefined;
+  const username = source !== "slack"
+    ? (await input({
+        message: "GitHub username (leave empty for token owner):",
+      })) || undefined
+    : undefined;
 
-  return { period, since, until, format, username, org, prompt };
+  const org = source !== "slack"
+    ? (await input({
+        message: "Filter by organization (leave empty for all):",
+      })) || undefined
+    : undefined;
+
+  return { period, since, until, format, username, org, prompt, source };
 }
