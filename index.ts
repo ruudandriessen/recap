@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import pkg from "./package.json";
 import ora from "ora";
 import { parseArgs, shouldRunInteractive } from "./src/cli/index.ts";
 import type { ParsedCommand, SourceOption } from "./src/cli/index.ts";
@@ -207,6 +208,11 @@ async function outputResults(
 
 async function main() {
   const argv = process.argv.slice(2);
+
+  if (argv.includes("--version") || argv.includes("-V")) {
+    console.log(pkg.version);
+    return;
+  }
 
   if (argv[0] === "auth") {
     return handleAuth(argv);
