@@ -1,31 +1,31 @@
 #!/usr/bin/env node
 import ora from "ora";
-import { parseArgs, shouldRunInteractive } from "./src/cli.ts";
-import type { ParsedCommand } from "./src/cli.ts";
-import { resolveDateRange } from "./src/config.ts";
+import { parseArgs, shouldRunInteractive } from "./src/cli/index.ts";
+import type { ParsedCommand, SourceOption } from "./src/cli/index.ts";
+import { resolveDateRange } from "./src/cli/config.ts";
+import { promptForOptions } from "./src/cli/interactive.ts";
 import { formatStructured } from "./src/formatters/structured.ts";
 import { generateSummary } from "./src/formatters/summary.ts";
-import { promptForOptions } from "./src/interactive.ts";
-import { createGitHubSource } from "./src/sources/github.ts";
-import { resolveGitHubToken } from "./src/sources/github-token.ts";
+import { createGitHubSource } from "./src/sources/github/index.ts";
+import { resolveGitHubToken } from "./src/sources/github/token.ts";
 import { createSlackSource, resolveSlackCredentials } from "./src/sources/slack/index.ts";
 import { createCachedSource } from "./src/cache.ts";
 import type { CachedSource, FetchProgress } from "./src/cache.ts";
-import type { ActivityData, DateRange, SourceOption } from "./src/types.ts";
+import type { ActivityData, DateRange } from "./src/types.ts";
 
 async function handleAuth(argv: string[]) {
   const subcommand = argv[1];
   if (subcommand === "slack") {
     const action = argv[2];
     if (action === "logout") {
-      const { handleAuthSlackLogout } = await import("./src/auth.ts");
+      const { handleAuthSlackLogout } = await import("./src/cli/auth.ts");
       return handleAuthSlackLogout();
     }
     if (action === "status") {
-      const { handleAuthSlackStatus } = await import("./src/auth.ts");
+      const { handleAuthSlackStatus } = await import("./src/cli/auth.ts");
       return handleAuthSlackStatus();
     }
-    const { handleAuthSlack } = await import("./src/auth.ts");
+    const { handleAuthSlack } = await import("./src/cli/auth.ts");
     return handleAuthSlack();
   }
   console.error("Usage: recap auth slack [logout|status]");

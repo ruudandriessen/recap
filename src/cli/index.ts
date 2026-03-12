@@ -1,6 +1,18 @@
 import { Command } from "commander";
-import type { CliOptions } from "./types.ts";
 import { PROMPT_PRESETS } from "./prompts.ts";
+
+export type SourceOption = "github" | "slack" | "all";
+
+export interface CliOptions {
+  period: "week" | "month" | "quarter" | "year" | "custom";
+  since?: string;
+  until?: string;
+  format: "text" | "summary" | "both";
+  username?: string;
+  org?: string;
+  prompt?: string;
+  source?: SourceOption;
+}
 
 export type CommandMode = "default" | "fetch" | "summarize";
 

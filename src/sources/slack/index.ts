@@ -1,9 +1,24 @@
-import type { ActivityData, CacheKey, DataSource, DateRange, SlackActivity, SlackMessage } from "../../types.ts";
+import type { ActivityData, DateRange } from "../../types.ts";
+import type { CacheKey, DataSource } from "../source.ts";
 import { SlackApi } from "./api.ts";
 import type { SlackCredentials } from "./token.ts";
 
 export { resolveSlackCredentials, saveSlackCredentials, clearSlackCredentials } from "./token.ts";
 export type { SlackCredentials } from "./token.ts";
+
+export interface SlackMessage {
+  text: string;
+  channel: string;
+  channelType: "public" | "private" | "dm" | "group_dm";
+  timestamp: string;
+  permalink?: string;
+}
+
+export interface SlackActivity {
+  messages: SlackMessage[];
+  channelBreakdown: Record<string, number>;
+  totalCount: number;
+}
 
 type ChannelInfo = {
   name: string;

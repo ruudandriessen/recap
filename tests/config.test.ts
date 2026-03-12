@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { resolveDateRange, formatDate } from "../src/config.ts";
+import { resolveDateRange, formatDate } from "../src/cli/config.ts";
 
 test("formatDate returns YYYY-MM-DD", () => {
   expect(formatDate(new Date("2025-03-15T12:00:00Z"))).toBe("2025-03-15");

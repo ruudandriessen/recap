@@ -1,7 +1,9 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { homedir } from "node:os";
-import type { ActivityData, CacheKey, DataSource, DateRange, SlackActivity } from "./types.ts";
+import type { ActivityData, DateRange } from "./types.ts";
+import type { CacheKey, DataSource } from "./sources/source.ts";
+import type { SlackActivity } from "./sources/slack/index.ts";
 
 const CACHE_DIR = join(homedir(), ".recap", "cache");
 
