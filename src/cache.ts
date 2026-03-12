@@ -1,9 +1,10 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { homedir } from "node:os";
-import type { ActivityData, DateRange } from "./types.ts";
+import type { DateRange, SourceResult } from "./types.ts";
 import type { CacheKey, DataSource } from "./sources/source.ts";
-import type { SlackActivity } from "./sources/slack/index.ts";
+import type { PullRequest, Commit, GitHubSourceResult } from "./sources/github/index.ts";
+import type { SlackMessage, SlackSourceResult } from "./sources/slack/index.ts";
 
 const CACHE_DIR = join(homedir(), ".recap", "cache");
 
@@ -21,15 +22,25 @@ function cachePath(key: CacheKey): string {
   return join(CACHE_DIR, `${serializeCacheKey(key)}.json`);
 }
 
-export interface CachedData {
+interface CachedDataBase {
   cacheKey: CacheKey;
   fetchedRanges: DateRange[];
-  prsCreated: ActivityData["prsCreated"];
-  prsReviewed: ActivityData["prsReviewed"];
-  commits: ActivityData["commits"];
-  slackMessages?: SlackActivity["messages"];
+}
+
+export interface GitHubCachedData extends CachedDataBase {
+  source: "github";
+  prsCreated: PullRequest[];
+  prsReviewed: PullRequest[];
+  commits: Commit[];
+}
+
+export interface SlackCachedData extends CachedDataBase {
+  source: "slack";
+  slackMessages: SlackMessage[];
   slackUsername?: string;
 }
+
+export type CachedData = GitHubCachedData | SlackCachedData;
 
 async function loadCache(key: CacheKey): Promise<CachedData | null> {
   try {
@@ -117,65 +128,115 @@ function dedup<T>(existing: T[], incoming: T[], key: (item: T) => string): T[] {
   return [...seen.values()];
 }
 
-function mergeActivity(existing: CachedData, incoming: ActivityData): CachedData {
-  const slackMessages = incoming.slack
-    ? dedup(
-        existing.slackMessages ?? [],
-        incoming.slack.messages,
-        (m) => `${m.channel}:${m.timestamp}`
-      )
-    : existing.slackMessages;
-
+function mergeGitHub(existing: GitHubCachedData, incoming: GitHubSourceResult): GitHubCachedData {
   return {
+    source: "github",
     cacheKey: existing.cacheKey,
     fetchedRanges: consolidateRanges([...existing.fetchedRanges, incoming.dateRange]),
     prsCreated: dedup(existing.prsCreated, incoming.prsCreated, (pr) => pr.url),
     prsReviewed: dedup(existing.prsReviewed, incoming.prsReviewed, (pr) => pr.url),
     commits: dedup(existing.commits, incoming.commits, (c) => c.sha),
-    slackMessages,
+  };
+}
+
+function mergeSlack(existing: SlackCachedData, incoming: SlackSourceResult): SlackCachedData {
+  return {
+    source: "slack",
+    cacheKey: existing.cacheKey,
+    fetchedRanges: consolidateRanges([...existing.fetchedRanges, incoming.dateRange]),
+    slackMessages: dedup(
+      existing.slackMessages,
+      incoming.slack.messages,
+      (m) => `${m.channel}:${m.timestamp}`,
+    ),
     slackUsername: incoming.slackUsername ?? existing.slackUsername,
   };
 }
 
 // ── Filter ──────────────────────────────────────────────────
 
-export function filterByDateRange(
-  cached: CachedData,
-  dateRange: DateRange,
-  sourceName: string,
-  username: string,
-): ActivityData {
+function filterGitHub(cached: GitHubCachedData, dateRange: DateRange, username: string): GitHubSourceResult {
   const { since, until } = dateRange;
   const untilEnd = until + "T23:59:59Z";
-
-  const filteredSlackMessages = cached.slackMessages?.filter(
-    (m) => m.timestamp >= since && m.timestamp <= untilEnd
-  );
-
-  let slack: SlackActivity | undefined;
-  if (filteredSlackMessages && filteredSlackMessages.length > 0) {
-    const channelBreakdown: Record<string, number> = {};
-    for (const msg of filteredSlackMessages) {
-      channelBreakdown[msg.channel] = (channelBreakdown[msg.channel] ?? 0) + 1;
-    }
-    slack = {
-      messages: filteredSlackMessages,
-      channelBreakdown,
-      totalCount: filteredSlackMessages.length,
-    };
-  }
-
   return {
-    source: sourceName,
+    source: "github",
     dateRange,
     username,
-    slackUsername: cached.slackUsername,
     prsCreated: cached.prsCreated.filter((pr) => pr.createdAt >= since && pr.createdAt <= untilEnd),
     prsReviewed: cached.prsReviewed.filter((pr) => pr.createdAt >= since && pr.createdAt <= untilEnd),
     commits: cached.commits.filter((c) => c.date >= since && c.date <= untilEnd),
-    slack,
   };
 }
+
+function filterSlack(cached: SlackCachedData, dateRange: DateRange, username: string): SlackSourceResult {
+  const { since, until } = dateRange;
+  const untilEnd = until + "T23:59:59Z";
+  const messages = cached.slackMessages.filter(
+    (m) => m.timestamp >= since && m.timestamp <= untilEnd,
+  );
+  const channelBreakdown: Record<string, number> = {};
+  for (const msg of messages) {
+    channelBreakdown[msg.channel] = (channelBreakdown[msg.channel] ?? 0) + 1;
+  }
+  return {
+    source: "slack",
+    dateRange,
+    username,
+    slackUsername: cached.slackUsername ?? username,
+    slack: { messages, channelBreakdown, totalCount: messages.length },
+  };
+}
+
+export function filterByDateRange(cached: CachedData, dateRange: DateRange, username: string): SourceResult {
+  switch (cached.source) {
+    case "github":
+      return filterGitHub(cached, dateRange, username);
+    case "slack":
+      return filterSlack(cached, dateRange, username);
+  }
+}
+
+// ── Source-specific cache operations ────────────────────────
+
+interface CacheOps<R extends SourceResult, C extends CachedData> {
+  toCached(key: CacheKey, result: R): C;
+  merge(existing: C, incoming: R): C;
+  filter(cached: C, dateRange: DateRange, username: string): R;
+}
+
+const githubCacheOps: CacheOps<GitHubSourceResult, GitHubCachedData> = {
+  toCached(key, result) {
+    return {
+      source: "github",
+      cacheKey: key,
+      fetchedRanges: [result.dateRange],
+      prsCreated: result.prsCreated,
+      prsReviewed: result.prsReviewed,
+      commits: result.commits,
+    };
+  },
+  merge: mergeGitHub,
+  filter: filterGitHub,
+};
+
+const slackCacheOps: CacheOps<SlackSourceResult, SlackCachedData> = {
+  toCached(key, result) {
+    return {
+      source: "slack",
+      cacheKey: key,
+      fetchedRanges: [result.dateRange],
+      slackMessages: result.slack.messages,
+      slackUsername: result.slackUsername,
+    };
+  },
+  merge: mergeSlack,
+  filter: filterSlack,
+};
+
+const cacheOpsMap: { github: CacheOps<GitHubSourceResult, GitHubCachedData>; slack: CacheOps<SlackSourceResult, SlackCachedData> } = {
+  github: githubCacheOps,
+  slack: slackCacheOps,
+};
 
 // ── CachedSource ────────────────────────────────────────────
 
@@ -185,7 +246,9 @@ export interface FetchProgress {
   onFetched?(gap: DateRange): void;
 }
 
-export function createCachedSource<K extends CacheKey>(inner: DataSource<K>) {
+export function createCachedSource<K extends CacheKey, R extends SourceResult>(inner: DataSource<K, R>) {
+  const ops = cacheOpsMap[inner.name as SourceResult["source"]] as CacheOps<R, CachedData>;
+
   return {
     name: inner.name,
 
@@ -200,7 +263,7 @@ export function createCachedSource<K extends CacheKey>(inner: DataSource<K>) {
     /**
      * Get activity for a date range, fetching only the gaps not already cached.
      */
-    async fetch(username: string, dateRange: DateRange, progress?: FetchProgress): Promise<ActivityData> {
+    async fetch(username: string, dateRange: DateRange, progress?: FetchProgress): Promise<R> {
       const key = inner.makeCacheKey(username);
       let cached = await loadCache(key);
 
@@ -210,37 +273,29 @@ export function createCachedSource<K extends CacheKey>(inner: DataSource<K>) {
 
       if (gaps.length === 0) {
         progress?.onCacheHit?.(dateRange);
-        return filterByDateRange(cached!, dateRange, inner.name, username);
+        return ops.filter(cached!, dateRange, username);
       }
 
       progress?.onFetching?.(gaps);
 
       for (const gap of gaps) {
         const data = await inner.fetch(key, gap);
-        cached = cached ? mergeActivity(cached, data) : {
-          cacheKey: key,
-          fetchedRanges: [data.dateRange],
-          prsCreated: data.prsCreated,
-          prsReviewed: data.prsReviewed,
-          commits: data.commits,
-          slackMessages: data.slack?.messages,
-          slackUsername: data.slackUsername,
-        };
+        cached = cached ? ops.merge(cached, data) : ops.toCached(key, data);
         progress?.onFetched?.(gap);
       }
 
       await saveCache(cached!);
-      return filterByDateRange(cached!, dateRange, inner.name, username);
+      return ops.filter(cached!, dateRange, username);
     },
 
     /** Load from cache only, no fetching. Returns null if no cache exists. */
-    async loadCached(username: string, dateRange: DateRange): Promise<ActivityData | null> {
+    async loadCached(username: string, dateRange: DateRange): Promise<R | null> {
       const key = inner.makeCacheKey(username);
       const cached = await loadCache(key);
       if (!cached) return null;
-      return filterByDateRange(cached, dateRange, inner.name, username);
+      return ops.filter(cached, dateRange, username);
     },
   };
 }
 
-export type CachedSource = ReturnType<typeof createCachedSource>;
+export type CachedSource = ReturnType<typeof createCachedSource<CacheKey, SourceResult>>;

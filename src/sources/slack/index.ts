@@ -1,4 +1,4 @@
-import type { ActivityData, DateRange } from "../../types.ts";
+import type { DateRange } from "../../types.ts";
 import type { CacheKey, DataSource } from "../source.ts";
 import { SlackApi } from "./api.ts";
 import type { SlackCredentials } from "./token.ts";
@@ -18,6 +18,14 @@ export interface SlackActivity {
   messages: SlackMessage[];
   channelBreakdown: Record<string, number>;
   totalCount: number;
+}
+
+export interface SlackSourceResult {
+  source: "slack";
+  dateRange: DateRange;
+  username: string;
+  slackUsername: string;
+  slack: SlackActivity;
 }
 
 type ChannelInfo = {
@@ -175,7 +183,7 @@ export function createSlackSource(creds: SlackCredentials, targetUsername?: stri
       return user;
     },
 
-    async fetch(key: SlackCacheKey, dateRange: DateRange): Promise<ActivityData> {
+    async fetch(key: SlackCacheKey, dateRange: DateRange): Promise<SlackSourceResult> {
       const { user: resolvedName } = await resolveTargetUser();
       const slack = await fetchActivity(dateRange);
       return {
@@ -183,13 +191,10 @@ export function createSlackSource(creds: SlackCredentials, targetUsername?: stri
         dateRange,
         username: resolvedName,
         slackUsername: resolvedName,
-        prsCreated: [],
-        prsReviewed: [],
-        commits: [],
         slack,
       };
     },
-  } satisfies DataSource<SlackCacheKey> & { fetchActivity: typeof fetchActivity };
+  } satisfies DataSource<SlackCacheKey, SlackSourceResult> & { fetchActivity: typeof fetchActivity };
 }
 
 function resolveChannelType(channel: any): SlackMessage["channelType"] {

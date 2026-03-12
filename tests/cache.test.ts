@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import type { CachedData } from "../src/cache.ts";
+import type { GitHubCachedData, SlackCachedData } from "../src/cache.ts";
 import { filterByDateRange, computeGaps, consolidateRanges } from "../src/cache.ts";
 
 const makePR = (n: number, createdAt: string) => ({
@@ -31,7 +31,8 @@ const makeSlackMsg = (channel: string, timestamp: string) => ({
 // ── filterByDateRange ───────────────────────────────────────
 
 test("filterByDateRange filters PRs and commits by date", () => {
-  const cached: CachedData = {
+  const cached: GitHubCachedData = {
+    source: "github",
     cacheKey: { source: "github", username: "testuser" },
     fetchedRanges: [],
     prsCreated: [
@@ -50,9 +51,11 @@ test("filterByDateRange filters PRs and commits by date", () => {
     ],
   };
 
-  const result = filterByDateRange(cached, { since: "2025-02-01", until: "2025-02-28" }, "test", "testuser");
+  const result = filterByDateRange(cached, { since: "2025-02-01", until: "2025-02-28" }, "testuser");
 
+  expect(result.source).toBe("github");
   expect(result.username).toBe("testuser");
+  if (result.source !== "github") throw new Error("expected github");
   expect(result.prsCreated).toHaveLength(1);
   expect(result.prsCreated[0]!.number).toBe(2);
   expect(result.prsReviewed).toHaveLength(1);
@@ -62,7 +65,8 @@ test("filterByDateRange filters PRs and commits by date", () => {
 });
 
 test("filterByDateRange returns empty arrays when no data in range", () => {
-  const cached: CachedData = {
+  const cached: GitHubCachedData = {
+    source: "github",
     cacheKey: { source: "github", username: "testuser" },
     fetchedRanges: [],
     prsCreated: [makePR(1, "2025-01-15T10:00:00Z")],
@@ -70,20 +74,19 @@ test("filterByDateRange returns empty arrays when no data in range", () => {
     commits: [makeCommit(1, "2025-01-10T10:00:00Z")],
   };
 
-  const result = filterByDateRange(cached, { since: "2025-06-01", until: "2025-06-30" }, "test", "testuser");
+  const result = filterByDateRange(cached, { since: "2025-06-01", until: "2025-06-30" }, "testuser");
 
+  if (result.source !== "github") throw new Error("expected github");
   expect(result.prsCreated).toHaveLength(0);
   expect(result.prsReviewed).toHaveLength(0);
   expect(result.commits).toHaveLength(0);
 });
 
 test("filterByDateRange filters slack messages by date", () => {
-  const cached: CachedData = {
+  const cached: SlackCachedData = {
+    source: "slack",
     cacheKey: { source: "slack", username: "testuser" },
     fetchedRanges: [],
-    prsCreated: [],
-    prsReviewed: [],
-    commits: [],
     slackMessages: [
       makeSlackMsg("general", "2025-01-15T10:00:00.000Z"),
       makeSlackMsg("dev", "2025-02-15T10:00:00.000Z"),
@@ -91,28 +94,27 @@ test("filterByDateRange filters slack messages by date", () => {
     ],
   };
 
-  const result = filterByDateRange(cached, { since: "2025-02-01", until: "2025-02-28" }, "test", "testuser");
+  const result = filterByDateRange(cached, { since: "2025-02-01", until: "2025-02-28" }, "testuser");
 
-  expect(result.slack).toBeDefined();
-  expect(result.slack!.totalCount).toBe(1);
-  expect(result.slack!.messages[0]!.channel).toBe("dev");
-  expect(result.slack!.channelBreakdown).toEqual({ dev: 1 });
+  if (result.source !== "slack") throw new Error("expected slack");
+  expect(result.slack.totalCount).toBe(1);
+  expect(result.slack.messages[0]!.channel).toBe("dev");
+  expect(result.slack.channelBreakdown).toEqual({ dev: 1 });
 });
 
-test("filterByDateRange returns no slack when messages outside range", () => {
-  const cached: CachedData = {
+test("filterByDateRange returns empty slack when messages outside range", () => {
+  const cached: SlackCachedData = {
+    source: "slack",
     cacheKey: { source: "slack", username: "testuser" },
     fetchedRanges: [],
-    prsCreated: [],
-    prsReviewed: [],
-    commits: [],
     slackMessages: [
       makeSlackMsg("general", "2025-01-15T10:00:00.000Z"),
     ],
   };
 
-  const result = filterByDateRange(cached, { since: "2025-06-01", until: "2025-06-30" }, "test", "testuser");
-  expect(result.slack).toBeUndefined();
+  const result = filterByDateRange(cached, { since: "2025-06-01", until: "2025-06-30" }, "testuser");
+  if (result.source !== "slack") throw new Error("expected slack");
+  expect(result.slack.totalCount).toBe(0);
 });
 
 // ── consolidateRanges ───────────────────────────────────────
