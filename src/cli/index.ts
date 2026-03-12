@@ -12,6 +12,7 @@ export interface CliOptions {
   org?: string;
   prompt?: string;
   source?: SourceOption;
+  slackUsername?: string;
 }
 
 export type CommandMode = "default" | "fetch" | "summarize";
@@ -28,6 +29,7 @@ function parseRoastArgs(argv: string[]): ParsedCommand {
     .description("Roast your GitHub activity from the last month")
     .option("--username <username>", "GitHub username (default: from token)")
     .option("-o, --org <org>", "filter by GitHub organization")
+    .option("--slack-username <slackUsername>", "Slack user ID to target, e.g. U01ABC123 (default: token owner)")
     .option(
       "-t, --period <period>",
       "time period: week, month, quarter, year",
@@ -47,6 +49,7 @@ function parseRoastArgs(argv: string[]): ParsedCommand {
       org: opts.org,
       prompt: roastPrompt,
       source: "all",
+      slackUsername: opts.slackUsername,
     },
   };
 }
@@ -65,6 +68,7 @@ function parseFetchArgs(argv: string[]): ParsedCommand {
     .option("-u, --until <date>", "end date (YYYY-MM-DD) for custom period")
     .option("--username <username>", "GitHub username (default: from token)")
     .option("-o, --org <org>", "filter by GitHub organization")
+    .option("--slack-username <slackUsername>", "Slack user ID to target, e.g. U01ABC123 (default: token owner)")
     .option("--source <source>", "data source: github, slack, or all (default: all)", "all");
 
   program.parse(argv, { from: "user" });
@@ -96,6 +100,7 @@ function parseFetchArgs(argv: string[]): ParsedCommand {
       username: opts.username,
       org: opts.org,
       source,
+      slackUsername: opts.slackUsername,
     },
   };
 }
@@ -118,6 +123,7 @@ function parseSummarizeArgs(argv: string[]): ParsedCommand {
       "both"
     )
     .option("--username <username>", "GitHub username (required)")
+    .option("--slack-username <slackUsername>", "Slack user ID to target, e.g. U01ABC123 (default: token owner)")
     .option("-p, --prompt <prompt>", "custom prompt (replaces default review prompt; activity data is appended)")
     .option("--source <source>", "data source: github, slack, or all (default: all)", "all");
 
@@ -162,6 +168,7 @@ function parseSummarizeArgs(argv: string[]): ParsedCommand {
       username: opts.username,
       prompt: opts.prompt,
       source,
+      slackUsername: opts.slackUsername,
     },
   };
 }
@@ -198,6 +205,7 @@ export function parseArgs(argv: string[]): ParsedCommand {
     )
     .option("--username <username>", "GitHub username (default: from token)")
     .option("-o, --org <org>", "filter by GitHub organization")
+    .option("--slack-username <slackUsername>", "Slack user ID to target, e.g. U01ABC123 (default: token owner)")
     .option("-i, --interactive", "run in interactive mode")
     .option("-p, --prompt <prompt>", "custom prompt (replaces default review prompt; activity data is appended)")
     .option("--source <source>", "data source: github, slack, or all (default: all)", "all");
@@ -243,6 +251,7 @@ export function parseArgs(argv: string[]): ParsedCommand {
       org: opts.org,
       prompt: opts.prompt,
       source,
+      slackUsername: opts.slackUsername,
     },
   };
 }

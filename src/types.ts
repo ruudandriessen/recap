@@ -10,6 +10,7 @@ export interface ActivityData {
   source: string;
   dateRange: DateRange;
   username: string;
+  slackUsername?: string;
   prsCreated: PullRequest[];
   prsReviewed: PullRequest[];
   commits: Commit[];

@@ -14,6 +14,12 @@ export class SlackApi {
     return { user_id: data.user_id, user: data.user };
   }
 
+  /** Look up a user by Slack user ID (single API call). */
+  async lookupUser(userId: string): Promise<{ user_id: string; user: string }> {
+    const data = await this.request("users.info", { user: userId });
+    return { user_id: data.user.id, user: data.user.name };
+  }
+
   async searchMessages(
     query: string,
     page: number = 1,

@@ -3,9 +3,12 @@ import type { ActivityData } from "../types.ts";
 export function formatStructured(data: ActivityData): string {
   const lines: string[] = [];
 
-  lines.push("=== GitHub Activity Recap ===");
+  lines.push("=== Activity Recap ===");
   lines.push(`Period: ${data.dateRange.since} to ${data.dateRange.until}`);
   lines.push(`User: ${data.username}`);
+  if (data.slackUsername && data.slackUsername !== data.username) {
+    lines.push(`Slack user: ${data.slackUsername}`);
+  }
   lines.push("");
 
   // PRs Created

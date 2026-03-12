@@ -28,9 +28,10 @@ type ChannelInfo = {
 export interface SlackCacheKey extends CacheKey {
   source: "slack";
   username: string;
+  targetUser?: string;
 }
 
-export function createSlackSource(creds: SlackCredentials) {
+export function createSlackSource(creds: SlackCredentials, targetUsername?: string) {
   const api = new SlackApi(creds.token, creds.cookie);
 
   async function buildChannelMap(): Promise<Map<string, ChannelInfo>> {
@@ -122,8 +123,18 @@ export function createSlackSource(creds: SlackCredentials) {
     return messages;
   }
 
+  let cachedTargetUser: { user_id: string; user: string } | null = null;
+
+  async function resolveTargetUser(): Promise<{ user_id: string; user: string }> {
+    if (cachedTargetUser) return cachedTargetUser;
+    cachedTargetUser = targetUsername
+      ? await api.lookupUser(targetUsername)
+      : await api.authTest();
+    return cachedTargetUser;
+  }
+
   async function fetchActivity(dateRange: DateRange): Promise<SlackActivity> {
-    const { user_id: userId } = await api.authTest();
+    const { user_id: userId } = await resolveTargetUser();
 
     let messages: SlackMessage[];
     try {
@@ -156,20 +167,22 @@ export function createSlackSource(creds: SlackCredentials) {
     fetchActivity,
 
     makeCacheKey(username: string): SlackCacheKey {
-      return { source: "slack", username };
+      return { source: "slack", username, targetUser: targetUsername };
     },
 
     async resolveUsername(): Promise<string> {
-      const { user } = await api.authTest();
+      const { user } = await resolveTargetUser();
       return user;
     },
 
     async fetch(key: SlackCacheKey, dateRange: DateRange): Promise<ActivityData> {
+      const { user: resolvedName } = await resolveTargetUser();
       const slack = await fetchActivity(dateRange);
       return {
         source: "slack",
         dateRange,
-        username: key.username,
+        username: resolvedName,
+        slackUsername: resolvedName,
         prsCreated: [],
         prsReviewed: [],
         commits: [],

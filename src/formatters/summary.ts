@@ -73,8 +73,12 @@ export async function generateSummary(
 ): Promise<string> {
   const structuredText = formatStructured(data);
 
+  const slackUserLine = data.slackUsername && data.slackUsername !== data.username
+    ? `\nSlack user: ${data.slackUsername}`
+    : "";
+
   let activityContext = `
-Username: ${data.username}
+Username: ${data.username}${slackUserLine}
 Period: ${period === "custom" ? "custom period" : `past ${period}`} (${data.dateRange.since} to ${data.dateRange.until})
 
 ${structuredText}

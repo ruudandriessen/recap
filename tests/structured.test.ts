@@ -13,7 +13,7 @@ const emptyData: ActivityData = {
 
 test("formatStructured shows header with period and user", () => {
   const output = formatStructured(emptyData);
-  expect(output).toContain("GitHub Activity Recap");
+  expect(output).toContain("Activity Recap");
   expect(output).toContain("2025-02-16 to 2025-02-23");
   expect(output).toContain("testuser");
 });
