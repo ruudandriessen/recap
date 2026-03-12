@@ -8,12 +8,12 @@ export const PROMPT_PRESETS: PromptPreset[] = [
   {
     name: "Sprint summary (for managers / stakeholders)",
     value: "sprint",
-    prompt: `Write a concise, professional summary of this developer's work that could be shared with a manager or presented at the end of a sprint. Focus on what was accomplished, key deliverables, and any notable contributions. Use clear, non-technical language where possible. Structure it as a brief status update with sections for accomplishments, in-progress work (if any PRs are still open), and collaboration highlights.`,
+    prompt: `Write a concise, professional summary of this developer's work that could be shared with a manager or presented at the end of a sprint. Focus on what was accomplished, key deliverables, and any notable contributions. Use clear, non-technical language where possible. Structure it as a brief status update with sections for accomplishments, in-progress work (if any PRs are still open), and collaboration highlights. If Slack data is available, include a brief section on communication highlights — key channels of activity and any notable collaboration patterns.`,
   },
   {
     name: "Performance review starter",
     value: "review",
-    prompt: `Write a summary of this developer's work that can serve as the starting point for a performance review. Cover: key accomplishments and impact, technical growth signals, collaboration and code review patterns, consistency and reliability of output, and areas of strength. Frame everything in terms of observable evidence from the activity data. Use a professional, constructive tone suitable for an official review document.`,
+    prompt: `Write a summary of this developer's work that can serve as the starting point for a performance review. Cover: key accomplishments and impact, technical growth signals, collaboration and code review patterns, consistency and reliability of output, and areas of strength. If Slack data is available, also assess communication patterns — engagement across channels, responsiveness, and collaboration style as evidenced by messaging activity. Frame everything in terms of observable evidence from the activity data. Use a professional, constructive tone suitable for an official review document.`,
   },
   {
     name: "Unbiased engineering review",
@@ -29,11 +29,13 @@ Your review should cover:
 6. **Areas for improvement** — list concrete areas where they could do better.
 7. **Estimated engineer level** — based solely on the evidence in this activity, classify this person into one of these levels: Junior, SE2, Senior, Principal, or Senior Principal. Explain your reasoning.
 
+8. **Communication** — if Slack data is available, assess their communication patterns: which channels they're active in, volume of messages, and any signals about collaboration style or engagement. If no Slack data is provided, skip this section.
+
 Be direct and honest. Don't sugarcoat, but be fair. If there's not enough data to assess something, say so.`,
   },
   {
     name: "Roast me",
     value: "roast",
-    prompt: `You are a brutally honest (but funny) code reviewer who has been asked to roast this developer's GitHub activity. Go all in — point out anything that could be seen as lazy, sloppy, or questionable. Tiny PRs? Call them out. Vague commit messages? Drag them. No reviews? Roast them for being a lone wolf. Too many reviews? Ask if they actually write code. Be savage but keep it entertaining. End with a final verdict / burn. Remember: this is all in good fun, but the observations should be grounded in the actual data.`,
+    prompt: `You are a brutally honest (but funny) code reviewer who has been asked to roast this developer's GitHub activity. Go all in — point out anything that could be seen as lazy, sloppy, or questionable. Tiny PRs? Call them out. Vague commit messages? Drag them. No reviews? Roast them for being a lone wolf. Too many reviews? Ask if they actually write code. If Slack data is available, roast their messaging habits too — are they a channel lurker? A serial thread-starter? Do they live in #random? Be savage but keep it entertaining. End with a final verdict / burn. Remember: this is all in good fun, but the observations should be grounded in the actual data.`,
   },
 ];

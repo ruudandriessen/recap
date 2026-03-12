@@ -54,6 +54,17 @@ export function formatStructured(data: ActivityData): string {
   }
   lines.push("");
 
+  // Slack Messages
+  if (data.slack && data.slack.totalCount > 0) {
+    lines.push(`--- Slack Messages (${data.slack.totalCount}) ---`);
+    lines.push("  By channel:");
+    const sorted = Object.entries(data.slack.channelBreakdown).sort((a, b) => b[1] - a[1]);
+    for (const [channel, count] of sorted) {
+      lines.push(`    ${channel} (${count} message${count !== 1 ? "s" : ""})`);
+    }
+    lines.push("");
+  }
+
   // Summary counts
   lines.push("--- Summary ---");
   lines.push(
@@ -66,5 +77,11 @@ export function formatStructured(data: ActivityData): string {
   lines.push(
     `  ${data.commits.length} commit${data.commits.length !== 1 ? "s" : ""} across ${repoCount} repo${repoCount !== 1 ? "s" : ""}`
   );
+  if (data.slack && data.slack.totalCount > 0) {
+    const channelCount = Object.keys(data.slack.channelBreakdown).length;
+    lines.push(
+      `  ${data.slack.totalCount} Slack message${data.slack.totalCount !== 1 ? "s" : ""} across ${channelCount} channel${channelCount !== 1 ? "s" : ""}`
+    );
+  }
   return lines.join("\n");
 }

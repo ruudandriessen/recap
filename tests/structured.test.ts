@@ -69,6 +69,31 @@ test("formatStructured groups commits by repo", () => {
   expect(output).toContain("org/repo-b (1 commit)");
 });
 
+test("formatStructured shows Slack section when slack data is present", () => {
+  const data: ActivityData = {
+    ...emptyData,
+    slack: {
+      messages: [
+        { text: "hello", channel: "#general", channelType: "public", timestamp: "2025-02-20T00:00:00Z" },
+        { text: "hi", channel: "#general", channelType: "public", timestamp: "2025-02-20T01:00:00Z" },
+        { text: "fix done", channel: "#engineering", channelType: "public", timestamp: "2025-02-20T02:00:00Z" },
+      ],
+      channelBreakdown: { "#general": 2, "#engineering": 1 },
+      totalCount: 3,
+    },
+  };
+  const output = formatStructured(data);
+  expect(output).toContain("Slack Messages (3)");
+  expect(output).toContain("#general (2 messages)");
+  expect(output).toContain("#engineering (1 message)");
+  expect(output).toContain("3 Slack messages across 2 channels");
+});
+
+test("formatStructured omits Slack section when no slack data", () => {
+  const output = formatStructured(emptyData);
+  expect(output).not.toContain("Slack");
+});
+
 test("formatStructured shows summary counts", () => {
   const data: ActivityData = {
     ...emptyData,
