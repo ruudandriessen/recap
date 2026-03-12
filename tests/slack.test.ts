@@ -1,5 +1,5 @@
 import { test, expect, mock, beforeEach } from "bun:test";
-import { SlackSource } from "../src/sources/slack/index.ts";
+import { createSlackSource } from "../src/sources/slack/index.ts";
 
 // Mock fetch globally
 const mockFetch = mock(() => Promise.resolve(new Response()));
@@ -48,7 +48,7 @@ test("fetchActivity uses search.messages when available", async () => {
     .mockResolvedValueOnce(jsonResponse(authTestResponse))
     .mockResolvedValueOnce(jsonResponse(searchResponse));
 
-  const source = new SlackSource({ token: "xoxp-test-token" });
+  const source = createSlackSource({ token: "xoxp-test-token" });
   const result = await source.fetchActivity({ since: "2023-11-14", until: "2023-11-15" });
 
   expect(result.totalCount).toBe(2);
@@ -82,7 +82,7 @@ test("fetchActivity falls back to conversations.history on missing_scope", async
     .mockResolvedValueOnce(jsonResponse(historyResponseGeneral))
     .mockResolvedValueOnce(jsonResponse(historyResponseEngineering));
 
-  const source = new SlackSource({ token: "xoxb-bot-token" });
+  const source = createSlackSource({ token: "xoxb-bot-token" });
   const result = await source.fetchActivity({ since: "2023-11-14", until: "2023-11-15" });
 
   expect(result.totalCount).toBe(1);
@@ -104,7 +104,7 @@ test("fetchActivity handles empty results", async () => {
     .mockResolvedValueOnce(jsonResponse(authTestResponse))
     .mockResolvedValueOnce(jsonResponse(searchResponse));
 
-  const source = new SlackSource({ token: "xoxp-test-token" });
+  const source = createSlackSource({ token: "xoxp-test-token" });
   const result = await source.fetchActivity({ since: "2023-11-14", until: "2023-11-15" });
 
   expect(result.totalCount).toBe(0);
@@ -141,7 +141,7 @@ test("fetchActivity paginates search results", async () => {
     .mockResolvedValueOnce(jsonResponse(page1))
     .mockResolvedValueOnce(jsonResponse(page2));
 
-  const source = new SlackSource({ token: "xoxp-test-token" });
+  const source = createSlackSource({ token: "xoxp-test-token" });
   const result = await source.fetchActivity({ since: "2023-11-14", until: "2023-11-15" });
 
   expect(result.totalCount).toBe(150);
@@ -163,7 +163,7 @@ test("fetchActivity passes cookie header for xoxc tokens", async () => {
     .mockResolvedValueOnce(jsonResponse(authTestResponse))
     .mockResolvedValueOnce(jsonResponse(searchResponse));
 
-  const source = new SlackSource({ token: "xoxc-browser-token", cookie: "abc123" });
+  const source = createSlackSource({ token: "xoxc-browser-token", cookie: "abc123" });
   await source.fetchActivity({ since: "2023-11-14", until: "2023-11-15" });
 
   // Verify cookie was passed in all requests
