@@ -1,6 +1,6 @@
 import { input } from "@inquirer/prompts";
-import { SlackApi } from "./sources/slack/api.ts";
-import { saveSlackCredentials, clearSlackCredentials, loadCachedCredentials } from "./sources/slack/token.ts";
+import { SlackApi } from "../sources/slack/api.ts";
+import { saveSlackCredentials, clearSlackCredentials, loadCachedCredentials } from "../sources/slack/token.ts";
 
 // One-liner to extract Slack token from browser console
 const EXTRACT_SNIPPET = `JSON.parse(localStorage.localConfig_v2).teams[Object.keys(JSON.parse(localStorage.localConfig_v2).teams)[0]].token`;

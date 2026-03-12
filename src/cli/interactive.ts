@@ -1,5 +1,5 @@
 import { select, input } from "@inquirer/prompts";
-import type { CliOptions } from "./types.ts";
+import type { CliOptions } from "./index.ts";
 import { PROMPT_PRESETS } from "./prompts.ts";
 
 export async function promptForOptions(): Promise<CliOptions> {

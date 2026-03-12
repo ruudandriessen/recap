@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import type { ActivityData } from "../types.ts";
 import { formatStructured } from "./structured.ts";
-import { PROMPT_PRESETS } from "../prompts.ts";
+import { PROMPT_PRESETS } from "../cli/prompts.ts";
 
 const DEFAULT_PROMPT = PROMPT_PRESETS.find((p) => p.value === "unbiased")!.prompt;
 

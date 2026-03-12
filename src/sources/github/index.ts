@@ -1,4 +1,25 @@
-import type { ActivityData, CacheKey, Commit, DataSource, DateRange, PullRequest } from "../types.ts";
+import type { ActivityData, DateRange } from "../../types.ts";
+import type { CacheKey, DataSource } from "../source.ts";
+
+export interface PullRequest {
+  title: string;
+  url: string;
+  repo: string; // "owner/repo"
+  number: number;
+  state: "open" | "closed";
+  merged: boolean;
+  createdAt: string;
+  mergedAt: string | null;
+  reviewCommentCount?: number;
+}
+
+export interface Commit {
+  message: string;
+  sha: string;
+  url: string;
+  repo: string;
+  date: string;
+}
 
 const GITHUB_API = "https://api.github.com";
 

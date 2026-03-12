@@ -1,5 +1,5 @@
 import { test, expect, describe } from "bun:test";
-import { shouldRunInteractive } from "../src/cli.ts";
+import { shouldRunInteractive } from "../src/cli/index.ts";
 
 describe("shouldRunInteractive", () => {
   test("returns true for empty argv", () => {

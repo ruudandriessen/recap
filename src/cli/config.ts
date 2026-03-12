@@ -1,4 +1,5 @@
-import type { CliOptions, DateRange } from "./types.ts";
+import type { DateRange } from "../types.ts";
+import type { CliOptions } from "./index.ts";
 
 export function resolveDateRange(options: CliOptions): DateRange {
   if (options.period === "custom") {
