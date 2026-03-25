@@ -29,7 +29,16 @@ async function handleAuth(argv: string[]) {
     const { handleAuthSlack } = await import("./src/cli/auth.ts");
     return handleAuthSlack();
   }
-  console.error("Usage: recap auth slack [logout|status]");
+  console.error(`Usage: recap auth slack [logout|status]
+
+Commands:
+  recap auth slack          interactive setup — guides you through getting a token
+  recap auth slack status   check if you're authenticated
+  recap auth slack logout   remove stored credentials
+
+Alternatively, set environment variables:
+  SLACK_TOKEN               Slack token (xoxc-, xoxp-, or xoxb-)
+  SLACK_COOKIE              session cookie "d" value (required for xoxc- tokens)`);
   process.exit(1);
 }
 
