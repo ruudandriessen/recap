@@ -26,7 +26,7 @@ function parseRoastArgs(argv: string[]): ParsedCommand {
   const program = new Command();
   program
     .name("recap roast")
-    .description("Roast your GitHub activity from the last month")
+    .description("Comedic roast of your recent GitHub and Slack activity")
     .option("--username <username>", "GitHub username (default: from token)")
     .option("-o, --org <org>", "filter by GitHub organization")
     .option("--slack-username <slackUsername>", "Slack user ID to target, e.g. U01ABC123 (default: token owner)")
@@ -190,7 +190,7 @@ export function parseArgs(argv: string[]): ParsedCommand {
 
   program
     .name("recap")
-    .description("Recap your GitHub activity for a time period")
+    .description("Recap your GitHub and Slack activity for a time period")
     .option(
       "-t, --period <period>",
       "time period: week, month, quarter, year, or custom",
@@ -208,7 +208,21 @@ export function parseArgs(argv: string[]): ParsedCommand {
     .option("--slack-username <slackUsername>", "Slack user ID to target, e.g. U01ABC123 (default: token owner)")
     .option("-i, --interactive", "run in interactive mode")
     .option("-p, --prompt <prompt>", "custom prompt (replaces default review prompt; activity data is appended)")
-    .option("--source <source>", "data source: github, slack, or all (default: all)", "all");
+    .option("--source <source>", "data source: github, slack, or all (default: all)", "all")
+    .addHelpText("after", `
+Commands:
+  recap roast                    comedic roast of recent activity
+  recap fetch                    fetch and cache activity data
+  recap summarize                summarize previously cached data
+  recap auth slack               interactive Slack authentication setup
+  recap auth slack status        check Slack authentication status
+  recap auth slack logout        remove stored Slack credentials
+
+Slack:
+  Authenticate with "recap auth slack" or set SLACK_TOKEN (and
+  SLACK_COOKIE for xoxc- tokens) as environment variables.
+  Use --source slack to fetch only Slack data, or --slack-username
+  to target a specific user by their Slack user ID.`);
 
   program.parse(argv, { from: "user" });
 
