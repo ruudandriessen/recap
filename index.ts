@@ -7,6 +7,7 @@ import { resolveDateRange } from "./src/cli/config.ts";
 import { promptForOptions } from "./src/cli/interactive.ts";
 import { formatStructured } from "./src/formatters/structured.ts";
 import { generateSummary } from "./src/formatters/summary.ts";
+import { formatJson } from "./src/formatters/json.ts";
 import { createGitHubSource } from "./src/sources/github/index.ts";
 import { resolveGitHubToken } from "./src/sources/github/token.ts";
 import { createSlackSource, resolveSlackCredentials } from "./src/sources/slack/index.ts";
@@ -145,7 +146,7 @@ async function fetchAll(
   sources: CachedSource[],
   username: string,
   dateRange: DateRange
-): Promise<ActivityData> {
+): Promise<{ data: ActivityData; results: SourceResult[] }> {
   const results: SourceResult[] = [];
   for (const source of sources) {
     const progress = makeFetchProgress(source.name);
@@ -153,7 +154,7 @@ async function fetchAll(
     progress.done(data);
     results.push(data);
   }
-  return mergeSourceResults(results);
+  return { data: mergeSourceResults(results), results };
 }
 
 async function fetchAndCache(command: ParsedCommand): Promise<void> {
@@ -191,7 +192,7 @@ async function summarizeFromCache(command: ParsedCommand): Promise<void> {
   spinner.succeed(`From cache: ${parts.join(", ") || "no data"}`);
 
   console.log("");
-  await outputResults(data, options.format, options.period, options.prompt);
+  await outputResults(data, results, options.format, options.period, options.prompt);
 }
 
 async function defaultFlow(command: ParsedCommand): Promise<void> {
@@ -200,18 +201,24 @@ async function defaultFlow(command: ParsedCommand): Promise<void> {
   const username = await resolveUser(sources, options.username);
   const dateRange = resolveDateRange(options);
 
-  const data = await fetchAll(sources, username, dateRange);
+  const { data, results } = await fetchAll(sources, username, dateRange);
 
   console.log("");
-  await outputResults(data, options.format, options.period, options.prompt);
+  await outputResults(data, results, options.format, options.period, options.prompt);
 }
 
 async function outputResults(
   data: ActivityData,
+  sourceResults: SourceResult[],
   format: string,
   period: string,
   prompt?: string
 ): Promise<void> {
+  if (format === "json") {
+    console.log(formatJson(sourceResults));
+    return;
+  }
+
   if (format === "text" || format === "both") {
     console.log(formatStructured(data));
   }

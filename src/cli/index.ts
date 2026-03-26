@@ -7,7 +7,7 @@ export interface CliOptions {
   period: "week" | "month" | "quarter" | "year" | "custom";
   since?: string;
   until?: string;
-  format: "text" | "summary" | "both";
+  format: "text" | "summary" | "both" | "json";
   username?: string;
   org?: string;
   prompt?: string;
@@ -119,7 +119,7 @@ function parseSummarizeArgs(argv: string[]): ParsedCommand {
     .option("-u, --until <date>", "end date (YYYY-MM-DD) for custom period")
     .option(
       "-f, --format <format>",
-      "output format: text, summary, or both",
+      "output format: text, summary, both, or json",
       "both"
     )
     .option("--username <username>", "GitHub username (required)")
@@ -139,9 +139,9 @@ function parseSummarizeArgs(argv: string[]): ParsedCommand {
     );
   }
 
-  if (!["text", "summary", "both"].includes(format)) {
+  if (!["text", "summary", "both", "json"].includes(format)) {
     throw new Error(
-      `Invalid format: ${format}. Must be text, summary, or both.`
+      `Invalid format: ${format}. Must be text, summary, both, or json.`
     );
   }
 
@@ -200,7 +200,7 @@ export function parseArgs(argv: string[]): ParsedCommand {
     .option("-u, --until <date>", "end date (YYYY-MM-DD) for custom period")
     .option(
       "-f, --format <format>",
-      "output format: text, summary, or both",
+      "output format: text, summary, both, or json",
       "both"
     )
     .option("--username <username>", "GitHub username (default: from token)")
@@ -237,9 +237,9 @@ Slack:
     );
   }
 
-  if (!["text", "summary", "both"].includes(format)) {
+  if (!["text", "summary", "both", "json"].includes(format)) {
     throw new Error(
-      `Invalid format: ${format}. Must be text, summary, or both.`
+      `Invalid format: ${format}. Must be text, summary, both, or json.`
     );
   }
 

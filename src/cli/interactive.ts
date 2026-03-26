@@ -36,6 +36,7 @@ export async function promptForOptions(): Promise<CliOptions> {
       { name: "Structured text", value: "text" as const },
       { name: "AI summary", value: "summary" as const },
       { name: "Both", value: "both" as const },
+      { name: "JSON (raw data)", value: "json" as const },
     ],
   });
 
